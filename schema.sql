@@ -51,3 +51,12 @@ CREATE TABLE IF NOT EXISTS users (
   salt     TEXT NOT NULL,      -- tilfeldig salt (hex), unikt per bruker
   laget    INTEGER NOT NULL    -- opprettet (ms)
 );
+
+-- Fremgang: hele spillerens lagrede progresjon som én JSON-blob per bruker
+-- (penger, nivå, framgang, eide baner/triks/ranks/merch, rekorder osv.).
+-- Slik beholdes alt ved refresh og på tvers av enheter når du er innlogget.
+CREATE TABLE IF NOT EXISTS progress (
+  navn  TEXT PRIMARY KEY,   -- brukernavn (matcher users.navn)
+  data  TEXT NOT NULL,      -- JSON med hele fremgangen
+  laget INTEGER NOT NULL    -- sist lagret (ms)
+);

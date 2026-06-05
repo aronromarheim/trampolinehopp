@@ -645,8 +645,8 @@
       <p>Hjelp gutten med å sprette høyt og gjøre kule triks i lufta!
          Land pent på beina for å få stjerner. Samle stjerner for å låse opp større triks.</p>
       <div class="taster kbonly">
-        <div class="tast">◀ Venstre<small>Snurr bakover (backflip)</small></div>
-        <div class="tast">Høyre ▶<small>Snurr framover (frontflip)</small></div>
+        <div class="tast">◀ Venstre / A<small>Snurr bakover (backflip)</small></div>
+        <div class="tast">D / Høyre ▶<small>Snurr framover (frontflip)</small></div>
       </div>
       <div class="taster touchonly">
         <div class="tast">👆 Hold på skjermen<small>Sprett høyere</small></div>
@@ -693,14 +693,21 @@ const H = lerret.height;  // høyde (900, fast)
 
 // ---- Tastetrykk: vi husker hvilke taster som holdes nede ----
 const taster = {};
+// A/D fungerer som venstre/høyre piltast (a = backflip, d = frontflip)
+function normTast(k){
+  if (k === 'a' || k === 'A') return 'ArrowLeft';
+  if (k === 'd' || k === 'D') return 'ArrowRight';
+  return k;
+}
 addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT') return;   // la tekstfelt skrive mellomrom osv. normalt
-  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
-  taster[e.key] = true;
+  const k = normTast(e.key);
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(k)) e.preventDefault();
+  taster[k] = true;
 });
 addEventListener('keyup', e => {
   if (e.target && e.target.tagName === 'INPUT') return;
-  taster[e.key] = false;
+  taster[normTast(e.key)] = false;
 });
 
 // ---- Verden / fysikk-innstillinger (lett tyngdekraft) ----
@@ -2162,6 +2169,7 @@ function oppdaterHud(){
   registrerPenger();   // send til penge-toppen hvis du nådde ny penge-rekord
   registrerKombo();    // send til kombo-toppen hvis du slo din lengste kombo
   tegnTriksliste();
+  lagreFremgang();     // lagre fremgangen (debounced) når noe har endret seg
 }
 
 function tegnTriksliste(){
@@ -2253,10 +2261,121 @@ function settInnlogget(navn){
   oppdaterBrukerstatus();
 }
 function loggUt(){
+  lagreNaa();                 // ta vare på fremgangen før vi logger ut
   innloggetNavn = null;
   try { localStorage.removeItem(BRUKER_KEY); } catch {}
   oppdaterBrukerstatus();
 }
+
+// =======================================================================
+//  LAGRING AV FREMGANG (knyttet til den innloggede kontoen)
+//  - server: /api/progress (D1) -> følger deg på tvers av enheter
+//  - localStorage: offline-kopi så du ikke mister noe uten nett
+// =======================================================================
+function fremKey(navn){ return 'th_frem_' + navn; }
+
+// Pakk hele den varige fremgangen til ett objekt vi kan lagre.
+function samleFremgang(){
+  return {
+    v: 1,
+    nivo, framgang, penger, stjerner,
+    besteTriks, maksHoyde, rekordKombo, antallTriks, rekordStjerner, bigAirRekord,
+    vinnstreak, baneIndex, langsomStart,
+    hemmeligLaastOpp, aronHeavenLaastOpp, romLaastOpp, aronBetalt, ekstraLaast,
+    baner: BANER.map(b => !!b.eid),        // hvilke baner du eier
+    triks: TRIKS.map(t => !!t.gjort),      // hvilke triks du har landet
+    eideRanks: { ...eideRanks },
+    rankIdx: rank ? RANKS.indexOf(rank) : -1,
+    eideMerch: { ...eideMerch },
+    paaMerchType: paaMerch ? paaMerch.type : null,
+    baneTing,                              // ting plassert per bane
+  };
+}
+
+// Skriv en lagret fremgang tilbake inn i spillet.
+function bruktFremgang(o){
+  if (!o || typeof o !== 'object') return;
+  const tall = (x, d) => (typeof x === 'number' && isFinite(x)) ? x : d;
+  nivo = tall(o.nivo, nivo);
+  framgang = tall(o.framgang, framgang);
+  penger = tall(o.penger, penger);
+  stjerner = tall(o.stjerner, stjerner);
+  maksHoyde = tall(o.maksHoyde, maksHoyde);
+  rekordKombo = tall(o.rekordKombo, rekordKombo);
+  antallTriks = tall(o.antallTriks, antallTriks);
+  rekordStjerner = tall(o.rekordStjerner, rekordStjerner);
+  bigAirRekord = tall(o.bigAirRekord, bigAirRekord);
+  vinnstreak = tall(o.vinnstreak, vinnstreak);
+  if (typeof o.besteTriks === 'string') besteTriks = o.besteTriks;
+  langsomStart = !!o.langsomStart;
+  hemmeligLaastOpp = !!o.hemmeligLaastOpp;
+  aronHeavenLaastOpp = !!o.aronHeavenLaastOpp;
+  romLaastOpp = !!o.romLaastOpp;
+  aronBetalt = !!o.aronBetalt;
+  ekstraLaast = !!o.ekstraLaast;
+  if (Array.isArray(o.baner)) o.baner.forEach((eid, i) => { if (BANER[i]) BANER[i].eid = !!eid; });
+  BANER[0].eid = true;                     // Hagen er alltid gratis/eid
+  if (Array.isArray(o.triks)) o.triks.forEach((g, i) => { if (TRIKS[i]) TRIKS[i].gjort = !!g; });
+  if (o.eideRanks && typeof o.eideRanks === 'object') eideRanks = { ...o.eideRanks };
+  rank = (typeof o.rankIdx === 'number' && o.rankIdx >= 0 && RANKS[o.rankIdx]) ? RANKS[o.rankIdx] : null;
+  if (o.eideMerch && typeof o.eideMerch === 'object') eideMerch = { ...o.eideMerch };
+  paaMerch = o.paaMerchType ? (MERCH.find(m => m.type === o.paaMerchType) || null) : null;
+  if (o.baneTing && typeof o.baneTing === 'object') baneTing = o.baneTing;
+  if (typeof o.baneIndex === 'number' && BANER[o.baneIndex]) baneIndex = o.baneIndex;
+  oppdaterHud();
+  oppdaterAdminSeksjon();
+}
+
+// Hent fremgang ved innlogging: prøv server først, fall tilbake til lokal kopi.
+async function lastFremgang(navn){
+  if (!navn) return;
+  let data = null;
+  try {
+    const r = await fetch('/api/progress?navn=' + encodeURIComponent(navn));
+    if (r.ok){ const j = await r.json().catch(()=> null); if (j && j.data) data = j.data; }
+  } catch {}
+  if (!data){                              // ingen server/nett -> bruk lokal kopi
+    try { const s = localStorage.getItem(fremKey(navn)); if (s) data = JSON.parse(s); } catch {}
+  }
+  if (data) bruktFremgang(data);
+  lagringKlar = true;                      // nå er det trygt å auto-lagre (ikke overskriv med null)
+}
+
+// Lagre nå (lokalt + server). Kalles via debounce og ved utlogging/lukking.
+function lagreNaa(){
+  if (!innloggetNavn || !lagringKlar) return;
+  const data = samleFremgang();
+  try { localStorage.setItem(fremKey(innloggetNavn), JSON.stringify(data)); } catch {}
+  try {
+    fetch('/api/progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn: innloggetNavn, data }),
+    });
+  } catch {}
+}
+
+// Debounce: samle opp endringer og lagre maks én gang hvert par sekund.
+// `lagringKlar` hindrer at vi overskriver serveren med tom state før den lagrede
+// fremgangen er hentet inn (settes true når lastFremgang er ferdig).
+let lagreTimer = null;
+let lagringKlar = false;
+function lagreFremgang(){
+  if (!innloggetNavn || !lagringKlar || lagreTimer) return;
+  lagreTimer = setTimeout(()=>{ lagreTimer = null; lagreNaa(); }, 2000);
+}
+// Sikkerhetsnett: lagre jevnlig (fanger endringer som ikke trigget en lagring).
+setInterval(()=>{ if (innloggetNavn) lagreFremgang(); }, 15000);
+// Lagre når fanen lukkes/oppdateres (sendBeacon overlever at siden forsvinner).
+window.addEventListener('beforeunload', ()=>{
+  if (!innloggetNavn || !lagringKlar) return;
+  const data = samleFremgang();
+  try { localStorage.setItem(fremKey(innloggetNavn), JSON.stringify(data)); } catch {}
+  try {
+    navigator.sendBeacon('/api/progress',
+      new Blob([JSON.stringify({ navn: innloggetNavn, data })], { type: 'application/json' }));
+  } catch {}
+});
 function oppdaterBrukerstatus(){
   const el = document.getElementById('brukerstatus');
   const startkn = document.getElementById('startknapp');
@@ -2293,6 +2412,7 @@ async function auth(handling){
     if (!r.ok || data.error){ mel.style.color = '#ff8a8a'; mel.textContent = data.error || 'Noe gikk galt.'; return; }
     document.getElementById('auth_passord').value = '';
     settInnlogget(data.navn);
+    await lastFremgang(data.navn);               // hent lagret fremgang før vi starter
     document.getElementById('innlogging').classList.add('hidden');
     startSpillet();
   } catch {
@@ -2315,7 +2435,7 @@ document.getElementById('brukerstatus').addEventListener('click', e=>{
 (function(){
   let lagret = null;
   try { lagret = localStorage.getItem(BRUKER_KEY); } catch {}
-  if (lagret) settInnlogget(lagret);
+  if (lagret){ settInnlogget(lagret); lastFremgang(lagret); }   // husk konto + fremgang
   else oppdaterBrukerstatus();
 })();
 

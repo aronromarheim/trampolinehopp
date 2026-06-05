@@ -23,6 +23,18 @@ API-endepunkter (Cloudflare Pages Functions): `functions/api/scores.js` (`{today
 `levels.js`, `money.js`, `combos.js`. Hver tar `GET` (topp 10) og `POST` (lagre beste per navn).
 Kjører du lokalt (uten API) faller spillet pent tilbake til en lokal eksempel-liste.
 
+## 💾 Lagret fremgang (per konto)
+Logger du inn, lagres **hele fremgangen din** (penger, nivå, samlet framgang, eide baner,
+låste opp triks/ranks/merch, rekorder og ting du har plassert ut) knyttet til kontoen din.
+Da overlever den både refresh og bytte av enhet.
+
+- Endepunkt: `functions/api/progress.js` – `GET /api/progress?navn=…` henter, `POST` lagrer
+  hele fremgangen som én JSON-blob i tabellen `progress` (én rad per bruker).
+- Lagres automatisk mens du spiller (debounced), jevnlig, og når du lukker fanen.
+- localStorage brukes som offline-kopi, så ingenting går tapt uten nett.
+- **NB:** Etter en `git pull` må D1-skjemaet oppdateres med den nye tabellen:
+  `npx wrangler d1 execute <DB> --remote --file schema.sql` (kjør `--local` for lokal test).
+
 ## Kjøre lokalt
 Du trenger bare en nettleser. For å serve filen lokalt:
 
