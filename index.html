@@ -221,8 +221,10 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; z-index: 7; padding: 20px;
   }
+  /* Samlet leaderboard har mange lister -> scroll fra toppen i stedet for sentrert */
+  #leaderboard { justify-content: flex-start; padding-top: 28px; }
   #leaderboard h2, #nivaaboard h2, #onlineboard h2, #pengeboard h2 { font-size: 30px; margin: 0 0 4px; }
-  #lbliste, #lbliste_dag, #nbliste, #onlineliste, #pengeliste { width: 360px; max-width: 88%; margin-top: 6px; max-height: 30vh; overflow-y: auto; }
+  #lbliste, #lbliste_dag, #nbliste, #onlineliste, #pengeliste, #komboliste { width: 360px; max-width: 88%; margin-top: 6px; max-height: 200px; overflow-y: auto; }
   .lbtittel { margin-top: 14px; font-weight: bold; color: #ffd34e; }
   .lbtittel small { font-weight: normal; opacity: .8; }
   .onlinehdr { color: #ffd34e; font-weight: bold; font-size: 15px; text-align: left; margin: 10px 4px 4px; }
@@ -265,12 +267,30 @@
   #restart_ja:active, #restart_nei:active { transform: translateY(3px); }
 
   /* Bane-velger og shop (overlays) */
-  #banevelger, #shop, #rankshop {
+  #banevelger, #shop, #rankshop, #innlogging {
     position: absolute; inset: 0; background: rgba(15,24,40,.93); backdrop-filter: blur(3px);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     text-align: center; z-index: 7; padding: 20px;
   }
-  #banevelger h2, #shop h2, #rankshop h2 { font-size: 30px; margin: 0 0 4px; }
+  #innlogging { z-index: 9; }   /* over startskjermen */
+  #banevelger h2, #shop h2, #rankshop h2, #innlogging h2 { font-size: 30px; margin: 0 0 4px; }
+
+  /* Innloggingsskjema */
+  #innlogging p { max-width: 360px; color: #cdd9ec; margin: 4px 0 14px; }
+  #innlogging input {
+    font-size: 17px; padding: 11px 14px; border-radius: 12px; border: 2px solid #3a4a63;
+    background: #fff; color: #1b2a44; width: 240px; max-width: 80vw; margin: 6px 0;
+  }
+  #auth_knapper { display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap; justify-content: center; }
+  #auth_knapper button {
+    font-size: 16px; font-weight: bold; padding: 11px 22px; border: none; border-radius: 99px; cursor: pointer;
+  }
+  #auth_logginn { background: linear-gradient(90deg,#ffd34e,#ff9f1c); color: #1b2a44; box-shadow: 0 4px 0 #c97a00; }
+  #auth_opprett { background: #7CFC9B; color: #1b2a44; box-shadow: 0 4px 0 #3a9c57; }
+  #auth_avbryt  { margin-top: 16px; font-size: 14px; padding: 8px 20px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+  #auth_melding { min-height: 20px; margin-top: 12px; font-size: 15px; color: #ff8a8a; }
+  #brukerstatus { color: #9fb3d1; font-size: 14px; margin-top: 12px; }
+  #brukerstatus a { color: #ffd34e; }
   #rankshopknapp { background: #ffd9a0; }
   #rank_lukk { margin-top: 18px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
   .brad { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 780px; margin-top: 10px; }
@@ -483,9 +503,7 @@
       <button id="baneknapp">🔄 Bane: Hagen</button>
       <button id="konkknapp">🏆 Konkurranse</button>
       <button id="startfartknapp">⚡ Startfart: AV</button>
-      <button id="leaderboardknapp">🏅 Big Air-topp</button>
-      <button id="nivaaknapp">📊 Nivå-topp</button>
-      <button id="pengeknapp">💰 Penge-topp</button>
+      <button id="leaderboardknapp">🏆 Leaderboards</button>
       <button id="rankshopknapp">🎖️ Rank-shop</button>
       <button id="redigerknapp" class="hidden">✏️ Rediger bane</button>
     </div>
@@ -506,27 +524,19 @@
       <button id="rank_lukk">Lukk</button>
     </div>
 
-    <div id="nivaaboard" class="hidden">
-      <h2>📊 Nivå – Toppliste</h2>
-      <div class="vstreak">🌐 Online! De 10 spillerne med høyest nivå</div>
-      <div id="nbliste"></div>
-      <button id="nb_lukk">Lukk</button>
-    </div>
-
-    <div id="pengeboard" class="hidden">
-      <h2>💰 Penge – Toppliste</h2>
-      <div class="vstreak">🌐 Online! De 10 rikeste spillerne</div>
-      <div id="pengeliste"></div>
-      <button id="penge_lukk">Lukk</button>
-    </div>
-
     <div id="leaderboard" class="hidden">
-      <h2>🏅 Big Air – Leaderboard</h2>
-      <div class="vstreak">🌐 Online! Flest grader du spinner på big air vinner!</div>
-      <div class="vstreak lbtittel">☀️ Dagens highscore <small>(nullstilles ved norsk midnatt)</small></div>
+      <h2>🏆 Leaderboards</h2>
+      <div class="vstreak">🌐 Alle topplistene – online!</div>
+      <div class="vstreak lbtittel">☀️ Big Air – Dagens <small>(nullstilles ved norsk midnatt)</small></div>
       <div id="lbliste_dag"></div>
-      <div class="vstreak lbtittel">🏆 Gjennom tidene</div>
+      <div class="vstreak lbtittel">🏅 Big Air – Gjennom tidene</div>
       <div id="lbliste"></div>
+      <div class="vstreak lbtittel">📊 Høyest nivå</div>
+      <div id="nbliste"></div>
+      <div class="vstreak lbtittel">💰 Rikeste spillere</div>
+      <div id="pengeliste"></div>
+      <div class="vstreak lbtittel">🔥 Lengste kombo</div>
+      <div id="komboliste"></div>
       <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
       <div id="adminseksjon" class="hidden">
         <button id="codeknapp">code:</button>
@@ -625,7 +635,21 @@
       <p class="kbonly" style="color:#9fb3d1;font-size:14px;">Bytt bane og start en 🏆 konkurranse med knappene på venstre side!</p>
       <p class="touchonly" style="color:#9fb3d1;font-size:14px;">Spill i landskap 📱 · meny ligger bak ☰-knappen.</p>
       <button id="startknapp">Start spillet</button>
+      <div id="brukerstatus"></div>
       <div id="undertekst">Laget for deg 💙</div>
+    </div>
+
+    <div id="innlogging" class="hidden">
+      <h2>🔑 Logg inn</h2>
+      <p>Logg inn for å spille – eller lag en ny bruker hvis du ikke har en fra før.</p>
+      <input id="auth_navn" type="text" maxlength="14" placeholder="Brukernavn" autocomplete="username">
+      <input id="auth_passord" type="password" placeholder="Passord" autocomplete="current-password">
+      <div id="auth_melding"></div>
+      <div id="auth_knapper">
+        <button id="auth_logginn">Logg inn</button>
+        <button id="auth_opprett">Lag ny bruker</button>
+      </div>
+      <button id="auth_avbryt">Avbryt</button>
     </div>
   </div>
 </div>
@@ -2110,6 +2134,7 @@ function oppdaterHud(){
   const pct = Math.min(100, Math.max(0, ((framgang - forrige) / (neste - forrige)) * 100));
   document.getElementById('nivofyll').style.width = pct + '%';
   registrerPenger();   // send til penge-toppen hvis du nådde ny penge-rekord
+  registrerKombo();    // send til kombo-toppen hvis du slo din lengste kombo
   tegnTriksliste();
 }
 
@@ -2173,14 +2198,99 @@ function løkke(tid){
 }
 
 // ---- Start ----
-document.getElementById('startknapp').addEventListener('click', ()=>{
+function startSpillet(){
   document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('innlogging').classList.add('hidden');
   document.getElementById('sideknapper').classList.remove('hidden');
   document.getElementById('bigairknapp').classList.remove('hidden');  // BIG AIR i vanlig modus
   spiller = true;
   gutt.vy = -8; // lite hopp for å komme i gang
   lerret.focus();
+}
+document.getElementById('startknapp').addEventListener('click', ()=>{
+  if (innloggetNavn) startSpillet();   // allerede logget inn -> rett i gang
+  else visInnlogging();                // ellers: krev innlogging/registrering
 });
+
+// ---- Innlogging / brukerkonto (Cloudflare D1 via /api/auth) ----
+const BRUKER_KEY = 'th_bruker';
+let innloggetNavn = null;
+
+function settInnlogget(navn){
+  innloggetNavn = navn;
+  spillerNavn = navn;
+  try { localStorage.setItem(BRUKER_KEY, navn); } catch {}
+  const inp = document.getElementById('navninput');
+  if (inp) inp.value = navn;
+  document.getElementById('spillernavn').textContent = navn;   // info-baren
+  oppdaterBrukerstatus();
+}
+function loggUt(){
+  innloggetNavn = null;
+  try { localStorage.removeItem(BRUKER_KEY); } catch {}
+  oppdaterBrukerstatus();
+}
+function oppdaterBrukerstatus(){
+  const el = document.getElementById('brukerstatus');
+  const startkn = document.getElementById('startknapp');
+  if (innloggetNavn){
+    el.innerHTML = '👤 Logget inn som <b></b> · <a href="#" id="loggut_lenke">Logg ut</a>';
+    el.querySelector('b').textContent = innloggetNavn;   // unngå HTML-injeksjon fra navn
+    startkn.textContent = 'Start spillet';
+  } else {
+    el.textContent = '🔒 Du må logge inn for å spille';
+    startkn.textContent = 'Logg inn / lag bruker';
+  }
+}
+function visInnlogging(){
+  const mel = document.getElementById('auth_melding');
+  mel.textContent = '';
+  document.getElementById('innlogging').classList.remove('hidden');
+  document.getElementById('auth_navn').focus();
+}
+async function auth(handling){
+  const navn = document.getElementById('auth_navn').value.trim();
+  const passord = document.getElementById('auth_passord').value;
+  const mel = document.getElementById('auth_melding');
+  if (!navn){ mel.style.color = '#ff8a8a'; mel.textContent = 'Skriv et brukernavn.'; return; }
+  if (passord.length < 4){ mel.style.color = '#ff8a8a'; mel.textContent = 'Passordet må ha minst 4 tegn.'; return; }
+  mel.style.color = '#9fb3d1';
+  mel.textContent = handling === 'opprett' ? 'Lager bruker …' : 'Logger inn …';
+  try {
+    const r = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ handling, navn, passord }),
+    });
+    const data = await r.json().catch(()=> ({}));
+    if (!r.ok || data.error){ mel.style.color = '#ff8a8a'; mel.textContent = data.error || 'Noe gikk galt.'; return; }
+    document.getElementById('auth_passord').value = '';
+    settInnlogget(data.navn);
+    document.getElementById('innlogging').classList.add('hidden');
+    startSpillet();
+  } catch {
+    mel.style.color = '#ff8a8a';
+    mel.textContent = 'Får ikke kontakt med serveren. (Online-innlogging krever Cloudflare.)';
+  }
+}
+document.getElementById('auth_logginn').addEventListener('click', ()=> auth('logginn'));
+document.getElementById('auth_opprett').addEventListener('click', ()=> auth('opprett'));
+document.getElementById('auth_avbryt').addEventListener('click', ()=>{
+  document.getElementById('innlogging').classList.add('hidden');
+});
+document.getElementById('auth_passord').addEventListener('keydown', e=>{
+  if (e.key === 'Enter') auth('logginn');
+});
+document.getElementById('brukerstatus').addEventListener('click', e=>{
+  if (e.target.id === 'loggut_lenke'){ e.preventDefault(); loggUt(); }
+});
+// husk innlogging fra forrige gang (på denne enheten)
+(function(){
+  let lagret = null;
+  try { lagret = localStorage.getItem(BRUKER_KEY); } catch {}
+  if (lagret) settInnlogget(lagret);
+  else oppdaterBrukerstatus();
+})();
 
 // ---- Bane-velger (kjøp/velg baner med penger) ----
 document.getElementById('baneknapp').addEventListener('click', ()=>{
@@ -2285,14 +2395,14 @@ function restartSpill(){
   vansk = VANSKELIGHETER.medium; vinnstreak = 0; friLekNivo = 1;
   // big air
   bigAirAktiv = false; bigAirTeller = 0; bigAirFlyr = false; bigAirKrasj = false; bakT = 0; bigAirToppM = 0;
-  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null; pengerTopp = 0;
+  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null; pengerTopp = 0; komboSendt = 0;
   // spinn / verden
   langsomStart = false; spinnHoldT = 0; tramX = B/2; tramW = 230; oppW = 150; nedtrykk = 0;
   gutt.x = B/2; gutt.y = MAT_Y; gutt.vy = 0; gutt.vinkel = 0; gutt.spinn = 0;
   gutt.paaMat = true; gutt.varILufta = false; gutt.vinkelVedStart = 0; gutt.krasjet = 0; gutt.tuck = 0;
   oppGutt.stjerner = 0; oppGutt.kombo = 0; oppGutt.feil = 0; oppGutt.ute = false; oppGutt.y = MAT_Y; oppGutt.vy = 0; oppGutt.vinkel = 0;
   // UI tilbake til startskjermen
-  ['restartbekreft','sideknapper','bigairknapp','konkhud','banevelger','shop','leaderboard','nivaaboard','onlineboard','rankshop','vanskeligheter','resultat','redigerknapp']
+  ['restartbekreft','sideknapper','bigairknapp','konkhud','banevelger','shop','leaderboard','onlineboard','rankshop','vanskeligheter','resultat','redigerknapp']
     .forEach(id => document.getElementById(id).classList.add('hidden'));
   document.getElementById('overlay').classList.remove('hidden');
   document.getElementById('baneknapp').textContent = '🔄 Bane: Hagen';
@@ -2490,24 +2600,6 @@ document.getElementById('leaderboardknapp').addEventListener('click', ()=>{
 document.getElementById('lb_lukk').addEventListener('click', ()=>{
   document.getElementById('leaderboard').classList.add('hidden'); lerret.focus();
 });
-// Nivå-toppliste
-document.getElementById('nivaaknapp').addEventListener('click', ()=>{
-  visNivaaboard();
-  document.getElementById('nivaaboard').classList.remove('hidden');
-  hentNivaa();          // oppdater fra serveren når man åpner nivå-toppen
-});
-document.getElementById('nb_lukk').addEventListener('click', ()=>{
-  document.getElementById('nivaaboard').classList.add('hidden'); lerret.focus();
-});
-// Penge-toppliste
-document.getElementById('pengeknapp').addEventListener('click', ()=>{
-  visPengeboard();
-  document.getElementById('pengeboard').classList.remove('hidden');
-  hentPenger();          // oppdater fra serveren når man åpner penge-toppen
-});
-document.getElementById('penge_lukk').addEventListener('click', ()=>{
-  document.getElementById('pengeboard').classList.add('hidden'); lerret.focus();
-});
 // Admin: online-oversikt over alle spillere
 document.getElementById('onlineknapp').addEventListener('click', ()=>{
   visOnlineboard();
@@ -2538,7 +2630,7 @@ async function hentNivaa(){
     const r = await fetch('/api/levels');
     if (r.ok){ onlineNivaa = await r.json(); }
   } catch (e){ /* offline -> lokal liste */ }
-  if (!document.getElementById('nivaaboard').classList.contains('hidden')) visNivaaboard();
+  if (!document.getElementById('leaderboard').classList.contains('hidden')) visNivaaboard();
 }
 async function sendNivaa(navn, niv){
   try {
@@ -2547,7 +2639,7 @@ async function sendNivaa(navn, niv){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ navn, nivo: niv })
     });
-    if (r.ok){ onlineNivaa = await r.json(); if (!document.getElementById('nivaaboard').classList.contains('hidden')) visNivaaboard(); }
+    if (r.ok){ onlineNivaa = await r.json(); if (!document.getElementById('leaderboard').classList.contains('hidden')) visNivaaboard(); }
   } catch (e){ /* offline -> hopp over */ }
 }
 function visNivaaboard(){
@@ -2581,7 +2673,7 @@ async function hentPenger(){
     const r = await fetch('/api/money');
     if (r.ok){ onlinePenger = await r.json(); }
   } catch (e){ /* offline -> lokal liste */ }
-  if (!document.getElementById('pengeboard').classList.contains('hidden')) visPengeboard();
+  if (!document.getElementById('leaderboard').classList.contains('hidden')) visPengeboard();
 }
 async function sendPenger(navn, pen){
   try {
@@ -2590,7 +2682,7 @@ async function sendPenger(navn, pen){
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ navn, penger: pen })
     });
-    if (r.ok){ onlinePenger = await r.json(); if (!document.getElementById('pengeboard').classList.contains('hidden')) visPengeboard(); }
+    if (r.ok){ onlinePenger = await r.json(); if (!document.getElementById('leaderboard').classList.contains('hidden')) visPengeboard(); }
   } catch (e){ /* offline -> hopp over */ }
 }
 // Kalles fra oppdaterHud: send når du når en ny penge-rekord (ikke i admin god mode)
@@ -2617,6 +2709,53 @@ function visPengeboard(){
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
     const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
     rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>💰 '+e.p+'</span>';
+    liste.appendChild(rad);
+  });
+}
+
+// ---- Online kombo-toppliste (Cloudflare D1 via /api/combos) ----
+let onlineKombo = null;     // array fra serveren (null = ikke hentet / offline)
+let komboSendt = 0;         // høyeste kombo vi har sendt
+async function hentKombo(){
+  try {
+    const r = await fetch('/api/combos');
+    if (r.ok){ onlineKombo = await r.json(); }
+  } catch (e){ /* offline -> lokal liste */ }
+  if (!document.getElementById('leaderboard').classList.contains('hidden')) visKomboboard();
+}
+async function sendKombo(navn, kmb){
+  try {
+    const r = await fetch('/api/combos', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, kombo: kmb })
+    });
+    if (r.ok){ onlineKombo = await r.json(); if (!document.getElementById('leaderboard').classList.contains('hidden')) visKomboboard(); }
+  } catch (e){ /* offline -> hopp over */ }
+}
+// Kalles fra oppdaterHud: send når du slår din lengste kombo
+function registrerKombo(){
+  if (rekordKombo > komboSendt && rekordKombo > 0){ komboSendt = rekordKombo; sendKombo(spillerNavn, rekordKombo); }
+}
+function visKomboboard(){
+  let alle;
+  if (Array.isArray(onlineKombo)){
+    alle = onlineKombo.map(e => ({ navn:e.navn, k:e.kombo }));
+    const meg = alle.find(e => e.navn === spillerNavn);
+    if (meg){ if (rekordKombo > meg.k) meg.k = rekordKombo; meg.deg = true; }
+    else if (rekordKombo > 0 || spillerNavn !== 'Hopperen'){ alle.push({ navn:spillerNavn, k:rekordKombo, deg:true }); }
+  } else {
+    alle = [{ navn:spillerNavn, k:rekordKombo, deg:true }];
+  }
+  alle.sort((a,b)=> b.k - a.k);
+  alle = alle.slice(0, 10);
+  const liste = document.getElementById('komboliste'); liste.innerHTML = '';
+  if (!alle.length){ liste.innerHTML = '<div class="lbrad lbtom">Ingen ennå – bli den første! 🚀</div>'; return; }
+  alle.forEach((e,i)=>{
+    const rad = document.createElement('div');
+    rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
+    const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>🔥 x'+e.k+'</span>';
     liste.appendChild(rad);
   });
 }
@@ -2785,8 +2924,9 @@ async function sendScore(navn, grader){
 }
 function visLeaderboard(){
   document.getElementById('navninput').value = spillerNavn;
-  renderLbListe();
-  hentOnlineScores();          // oppdater fra serveren når man åpner leaderboardet
+  // tegn alt med en gang (rask visning), så hent ferske data fra serveren
+  renderLbListe(); visNivaaboard(); visPengeboard(); visKomboboard();
+  hentOnlineScores(); hentNivaa(); hentPenger(); hentKombo();
   oppdaterAdminSeksjon();
 }
 // Tegn én liste (server-data eller lokal fallback) inn i en container
@@ -2893,6 +3033,7 @@ oppdaterHud();
 hentOnlineScores();            // hent online highscores ved oppstart
 hentNivaa();                   // hent online nivå-topp ved oppstart
 hentPenger();                  // hent online penge-topp ved oppstart
+hentKombo();                   // hent online kombo-topp ved oppstart
 requestAnimationFrame(løkke);
 </script>
 <div id="dreieskjerm">

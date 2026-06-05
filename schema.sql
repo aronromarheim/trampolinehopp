@@ -34,3 +34,20 @@ CREATE TABLE IF NOT EXISTS money (
   laget  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_money ON money (penger DESC);
+
+-- Kombo-toppliste: lengste kombo per navn
+CREATE TABLE IF NOT EXISTS combos (
+  navn  TEXT PRIMARY KEY,   -- én rad per navn (lengste kombo beholdes)
+  kombo INTEGER NOT NULL,
+  laget INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_combos ON combos (kombo DESC);
+
+-- Brukere (innlogging med navn + passord). Passordet lagres aldri i klartekst,
+-- bare som PBKDF2-hash med et tilfeldig salt per bruker.
+CREATE TABLE IF NOT EXISTS users (
+  navn     TEXT PRIMARY KEY,   -- brukernavn (matcher navn i topplistene)
+  passhash TEXT NOT NULL,      -- PBKDF2-SHA-256-hash (hex) av passordet
+  salt     TEXT NOT NULL,      -- tilfeldig salt (hex), unikt per bruker
+  laget    INTEGER NOT NULL    -- opprettet (ms)
+);
