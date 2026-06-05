@@ -39,13 +39,14 @@
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,.45);
-    touch-action: none;
   }
   canvas {
     display: block;
     width: 100%;
     height: 100%;
   }
+  /* Bare selve spillflaten skal sluke touch-gestures – overlegg/menyer må kunne scrolles */
+  #lerret { touch-action: none; }
 
   /* Toppanel med poeng/nivå */
   #hud {
@@ -328,6 +329,33 @@
   #resultat button:active { transform: translateY(3px); }
 
   /* ===== Mobil / touch ===== */
+  /* Alle fullskjerm-overlegg må kunne scrolles på lave skjermer (ellers havner
+     f.eks. "Start spillet" under skjermkanten). "safe center" beholder sentrering
+     når innholdet får plass, men faller tilbake til toppen (scrollbart) når ikke. */
+  #overlay, #vanskeligheter, #leaderboard, #nivaaboard, #onlineboard,
+  #restartbekreft, #banevelger, #shop, #rankshop, #resultat {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    justify-content: safe center;
+  }
+
+  /* Touch-spesifikke instruksjoner på startskjermen (tastatur-versjonen skjules) */
+  .touchonly { display: none; }
+  .touch .kbonly { display: none; }
+  .touch .taster.touchonly { display: flex; }
+  .touch p.touchonly { display: block; }
+
+  /* Lave skjermer (typisk mobil i landskap): krymp startskjermen så knappen synes */
+  @media (max-height: 520px) {
+    #overlay { padding: 12px; }
+    #overlay h1 { font-size: 26px; margin-bottom: 2px; }
+    #overlay p { font-size: 13px; margin: 3px 0; }
+    .taster { gap: 8px; margin: 8px 0; }
+    .tast { padding: 5px 9px; font-size: 13px; min-width: 0; }
+    #startknapp { margin-top: 8px; font-size: 17px; padding: 9px 22px; }
+    #undertekst { font-size: 12px; margin-top: 4px; }
+  }
+
   /* ☰-knapp som folder ut sidemenyen (kun touch, og kun når menyen er aktiv) */
   #menytoggle {
     display: none;
@@ -557,13 +585,20 @@
       <h1>🤸 Trampolinehopp</h1>
       <p>Hjelp gutten med å sprette høyt og gjøre kule triks i lufta!
          Land pent på beina for å få stjerner. Samle stjerner for å låse opp større triks.</p>
-      <div class="taster">
+      <div class="taster kbonly">
         <div class="tast">MELLOMROM<small>Hold for å sprette høyere</small></div>
         <div class="tast">◀ Venstre<small>Snurr bakover (backflip)</small></div>
         <div class="tast">Høyre ▶<small>Snurr framover (frontflip)</small></div>
       </div>
-      <p><b>Tips:</b> Slipp piltasten i tide så han lander rett opp og ned – ellers datt han! 😅</p>
-      <p style="color:#9fb3d1;font-size:14px;">Bytt bane og start en 🏆 konkurranse med knappene på venstre side!</p>
+      <div class="taster touchonly">
+        <div class="tast">👆 Hold på skjermen<small>Sprett høyere</small></div>
+        <div class="tast">◀ Venstre side<small>Backflip</small></div>
+        <div class="tast">Høyre side ▶<small>Frontflip</small></div>
+      </div>
+      <p class="kbonly"><b>Tips:</b> Slipp piltasten i tide så han lander rett opp og ned – ellers datt han! 😅</p>
+      <p class="touchonly"><b>Tips:</b> Slipp i tide så han lander rett opp og ned! 😅</p>
+      <p class="kbonly" style="color:#9fb3d1;font-size:14px;">Bytt bane og start en 🏆 konkurranse med knappene på venstre side!</p>
+      <p class="touchonly" style="color:#9fb3d1;font-size:14px;">Spill i landskap 📱 · meny ligger bak ☰-knappen.</p>
       <button id="startknapp">Start spillet</button>
       <div id="undertekst">Laget for deg 💙</div>
     </div>
