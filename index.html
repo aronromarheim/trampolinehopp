@@ -3299,8 +3299,8 @@ document.getElementById('codeinput').addEventListener('input', e=>{
     renderLbListe();
     visTrikstekst('🔓 Hemmelig bane låst opp! 🏙️', '#ffd34e');
   }
-  // "aron" -> GOD MODE: alle baner + alle shops + all merch + evig penger
-  if (kode === 'aron' && !adminAlt){
+  // "Aron/admin" -> GOD MODE: alle baner + alle shops + all merch + evig penger
+  if (kode === 'aron/admin' && !adminAlt){
     adminAlt = true;
     BANER.forEach(b => b.eid = true);                 // alle baner åpne
     hemmeligLaastOpp = true; aronHeavenLaastOpp = true;
