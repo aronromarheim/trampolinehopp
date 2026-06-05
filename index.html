@@ -239,11 +239,15 @@
   }
   .lbrad.lbdeg { background: linear-gradient(90deg,#ffd34e,#ff9f1c); }
   .lbrad.lbtom { justify-content: center; background: rgba(255,255,255,.6); color: #3a4a63; font-weight: normal; }
+  .lbrad .lbh { display: inline-flex; align-items: center; gap: 8px; }
+  .slettknapp { background: #ff5c5c; border: none; border-radius: 7px; cursor: pointer; font-size: 13px; line-height: 1; padding: 4px 7px; }
+  .slettknapp:active { transform: translateY(1px); }
   #lb_lukk, #nb_lukk, #online_lukk, #penge_lukk { margin-top: 16px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
   #nivaaknapp { background: #cfe9c4; }
   #onlineknapp { font-size: 14px; padding: 7px 14px; border: none; border-radius: 8px; background: #2e8b57; color: #fff; cursor: pointer; margin-left: 6px; }
   .navnrad { margin-top: 14px; color: #fff; font-size: 15px; }
   #navninput, #codeinput { font-size: 15px; padding: 6px 10px; border-radius: 8px; border: 2px solid #ccd; margin-left: 6px; width: 150px; }
+  #navninput:disabled { background: #eef1f6; color: #5a6b85; cursor: not-allowed; opacity: 1; }
   #adminseksjon { margin-top: 12px; }
   #codeknapp { font-size: 14px; padding: 7px 14px; border: none; border-radius: 8px; background: #2b3a55; color: #9fb3d1; cursor: pointer; }
   #pengeknapper { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
@@ -556,7 +560,7 @@
         <div class="lbtittel">🔥 Lengste kombo</div>
         <div id="komboliste"></div>
       </div>
-      <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
+      <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" disabled title="Navnet er låst til brukeren du logget inn som"> 🔒</div>
       <div id="adminseksjon" class="hidden">
         <button id="codeknapp">code:</button>
         <button id="onlineknapp" class="hidden">🌐 Online</button>
@@ -2243,8 +2247,9 @@ function settInnlogget(navn){
   spillerNavn = navn;
   try { localStorage.setItem(BRUKER_KEY, navn); } catch {}
   const inp = document.getElementById('navninput');
-  if (inp) inp.value = navn;
+  if (inp){ inp.value = navn; inp.disabled = true; }            // navnet er låst til brukeren
   document.getElementById('spillernavn').textContent = navn;   // info-baren
+  oppdaterAdminSeksjon();                                       // evt. kode-meny følger konto-navnet
   oppdaterBrukerstatus();
 }
 function loggUt(){
@@ -2429,6 +2434,7 @@ function restartSpill(){
   document.getElementById('overlay').classList.remove('hidden');
   document.getElementById('baneknapp').textContent = '🔄 Bane: Hagen';
   document.getElementById('startfartknapp').textContent = '⚡ Startfart: AV';
+  if (innloggetNavn) settInnlogget(innloggetNavn);   // behold innlogget navn (låst) etter restart
   oppdaterHud();
 }
 document.getElementById('restart_nei').addEventListener('click', ()=>{
@@ -2628,6 +2634,36 @@ function velgLbFane(tab){
   document.querySelectorAll('.lbseksjon').forEach(s => s.classList.toggle('hidden', s.dataset.sek !== tab));
 }
 document.querySelectorAll('.lbtab').forEach(b => b.addEventListener('click', ()=> velgLbFane(b.dataset.tab)));
+
+// ---- Aron kan slette folk fra topplistene ----
+function kanSlette(){ return !!(innloggetNavn && innloggetNavn.trim().toLowerCase() === 'aron'); }
+function slettKnappHtml(navn, board, egen){
+  if (!kanSlette() || egen) return '';     // vises bare for aron, ikke på din egen rad
+  return '<button class="slettknapp" data-board="'+board+'" data-slett="'+encodeURIComponent(navn)+'" title="Slett fra topplisten">🗑️</button>';
+}
+const SLETT_API = { bigair:'/api/scores', nivaa:'/api/levels', penger:'/api/money', kombo:'/api/combos' };
+async function slettSpiller(board, navn){
+  if (!kanSlette()) return;
+  const url = SLETT_API[board]; if (!url) return;
+  try {
+    const r = await fetch(url, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, av: innloggetNavn })
+    });
+    if (!r.ok) return;
+    const data = await r.json().catch(()=> null);
+    if (board === 'bigair'){ if (data) onlineScores = data; renderLbListe(); }
+    else if (board === 'nivaa'){ if (Array.isArray(data)) onlineNivaa = data; visNivaaboard(); }
+    else if (board === 'penger'){ if (Array.isArray(data)) onlinePenger = data; visPengeboard(); }
+    else if (board === 'kombo'){ if (Array.isArray(data)) onlineKombo = data; visKomboboard(); }
+  } catch (e){ /* offline -> hopp over */ }
+}
+document.getElementById('leaderboard').addEventListener('click', e=>{
+  const btn = e.target.closest('.slettknapp');
+  if (!btn) return;
+  slettSpiller(btn.dataset.board, decodeURIComponent(btn.dataset.slett));
+});
 // Admin: online-oversikt over alle spillere
 document.getElementById('onlineknapp').addEventListener('click', ()=>{
   visOnlineboard();
@@ -2688,7 +2724,7 @@ function visNivaaboard(){
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
     const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
-    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>Nivå '+e.lvl+'</span>';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span class="lbh">Nivå '+e.lvl+slettKnappHtml(e.navn,'nivaa',e.deg)+'</span>';
     liste.appendChild(rad);
   });
 }
@@ -2736,7 +2772,7 @@ function visPengeboard(){
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
     const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
-    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>💰 '+e.p+'</span>';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span class="lbh">💰 '+e.p+slettKnappHtml(e.navn,'penger',e.deg)+'</span>';
     liste.appendChild(rad);
   });
 }
@@ -2783,7 +2819,7 @@ function visKomboboard(){
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
     const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
-    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>🔥 x'+e.k+'</span>';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span class="lbh">🔥 x'+e.k+slettKnappHtml(e.navn,'kombo',e.deg)+'</span>';
     liste.appendChild(rad);
   });
 }
@@ -2890,6 +2926,7 @@ function taPaaMerch(i){
 }
 // endre navn (skriv "admin" for å låse opp code-knappen)
 document.getElementById('navninput').addEventListener('input', e=>{
+  if (innloggetNavn){ e.target.value = innloggetNavn; return; }       // navnet er låst til brukeren
   spillerNavn = e.target.value.trim() || 'Hopperen';
   document.getElementById('spillernavn').textContent = spillerNavn;   // oppdater info-baren
   renderLbListe();
@@ -2897,6 +2934,7 @@ document.getElementById('navninput').addEventListener('input', e=>{
 });
 // bytter du til et navn som IKKE er et ekstra-navn -> mister du ekstra-navnene
 document.getElementById('navninput').addEventListener('blur', ()=>{
+  if (innloggetNavn) return;                                          // navnet er låst til brukeren
   const n = spillerNavn.trim().toLowerCase();
   const spesielle = ['aron','admin','abdullah','secret shop','hopperen'];
   // Å hete "Aron" koster 100 000 kr (engangskjøp)
@@ -3000,7 +3038,7 @@ function tegnLbListe(containerId, serverData){
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
     const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
-    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>'+e.g+'°</span>';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span class="lbh">'+e.g+'°'+slettKnappHtml(e.navn,'bigair',e.deg)+'</span>';
     liste.appendChild(rad);
   });
 }
