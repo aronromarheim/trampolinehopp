@@ -26,3 +26,11 @@ CREATE TABLE IF NOT EXISTS levels (
   laget INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_levels ON levels (nivo DESC);
+
+-- Penge-toppliste: mest penger (toppnotering) per navn
+CREATE TABLE IF NOT EXISTS money (
+  navn   TEXT PRIMARY KEY,  -- én rad per navn (mest penger beholdes)
+  penger INTEGER NOT NULL,
+  laget  INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_money ON money (penger DESC);

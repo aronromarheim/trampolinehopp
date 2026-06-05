@@ -2109,6 +2109,7 @@ function oppdaterHud(){
   const forrige = nivoKrav(nivo);
   const pct = Math.min(100, Math.max(0, ((framgang - forrige) / (neste - forrige)) * 100));
   document.getElementById('nivofyll').style.width = pct + '%';
+  registrerPenger();   // send til penge-toppen hvis du nådde ny penge-rekord
   tegnTriksliste();
 }
 
@@ -2284,7 +2285,7 @@ function restartSpill(){
   vansk = VANSKELIGHETER.medium; vinnstreak = 0; friLekNivo = 1;
   // big air
   bigAirAktiv = false; bigAirTeller = 0; bigAirFlyr = false; bigAirKrasj = false; bakT = 0; bigAirToppM = 0;
-  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null;
+  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null; pengerTopp = 0;
   // spinn / verden
   langsomStart = false; spinnHoldT = 0; tramX = B/2; tramW = 230; oppW = 150; nedtrykk = 0;
   gutt.x = B/2; gutt.y = MAT_Y; gutt.vy = 0; gutt.vinkel = 0; gutt.spinn = 0;
@@ -2572,6 +2573,54 @@ function visNivaaboard(){
   });
 }
 
+// ---- Online penge-toppliste (Cloudflare D1 via /api/money) ----
+let onlinePenger = null;    // array fra serveren (null = ikke hentet / offline)
+let pengerTopp = 0;         // mest penger du har hatt (toppnotering) – sendes ved ny rekord
+async function hentPenger(){
+  try {
+    const r = await fetch('/api/money');
+    if (r.ok){ onlinePenger = await r.json(); }
+  } catch (e){ /* offline -> lokal liste */ }
+  if (!document.getElementById('pengeboard').classList.contains('hidden')) visPengeboard();
+}
+async function sendPenger(navn, pen){
+  try {
+    const r = await fetch('/api/money', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, penger: pen })
+    });
+    if (r.ok){ onlinePenger = await r.json(); if (!document.getElementById('pengeboard').classList.contains('hidden')) visPengeboard(); }
+  } catch (e){ /* offline -> hopp over */ }
+}
+// Kalles fra oppdaterHud: send når du når en ny penge-rekord (ikke i admin god mode)
+function registrerPenger(){
+  if (adminAlt) return;
+  if (penger > pengerTopp){ pengerTopp = penger; sendPenger(spillerNavn, pengerTopp); }
+}
+function visPengeboard(){
+  let alle;
+  if (Array.isArray(onlinePenger)){
+    alle = onlinePenger.map(e => ({ navn:e.navn, p:e.penger }));
+    const meg = alle.find(e => e.navn === spillerNavn);
+    if (meg){ if (pengerTopp > meg.p) meg.p = pengerTopp; meg.deg = true; }
+    else if (pengerTopp > 0 || spillerNavn !== 'Hopperen'){ alle.push({ navn:spillerNavn, p:pengerTopp, deg:true }); }
+  } else {
+    alle = SPILLERE.map(s => ({ navn:s.navn, p:s.penger })).concat([{ navn:spillerNavn, p:pengerTopp, deg:true }]);
+  }
+  alle.sort((a,b)=> b.p - a.p);
+  alle = alle.slice(0, 10);
+  const liste = document.getElementById('pengeliste'); liste.innerHTML = '';
+  if (!alle.length){ liste.innerHTML = '<div class="lbrad lbtom">Ingen ennå – bli den første! 🚀</div>'; return; }
+  alle.forEach((e,i)=>{
+    const rad = document.createElement('div');
+    rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
+    const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>💰 '+e.p+'</span>';
+    liste.appendChild(rad);
+  });
+}
+
 // ---- Rank-shop ----
 document.getElementById('rankshopknapp').addEventListener('click', ()=>{
   visRankshop();
@@ -2843,6 +2892,7 @@ tegnAvatar();
 oppdaterHud();
 hentOnlineScores();            // hent online highscores ved oppstart
 hentNivaa();                   // hent online nivå-topp ved oppstart
+hentPenger();                  // hent online penge-topp ved oppstart
 requestAnimationFrame(løkke);
 </script>
 <div id="dreieskjerm">
