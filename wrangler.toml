@@ -1,0 +1,9 @@
+name = "trampolinehopp"
+pages_build_output_dir = "."
+compatibility_date = "2026-06-01"
+
+# Highscore-database (Cloudflare D1) – tilgjengelig som env.DB i functions/api/scores.js
+[[d1_databases]]
+binding = "DB"
+database_name = "trampolinehopp-scores"
+database_id = "025af07d-9a6d-49ca-b66b-e1bad8c5a098"

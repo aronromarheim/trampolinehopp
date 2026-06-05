@@ -391,7 +391,7 @@
 
     <div id="leaderboard" class="hidden">
       <h2>🏅 Big Air – Leaderboard</h2>
-      <div class="vstreak">Flest grader du spinner på big air vinner!</div>
+      <div class="vstreak">🌐 Online! Flest grader du spinner på big air vinner!</div>
       <div id="lbliste"></div>
       <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
       <div id="adminseksjon" class="hidden">
@@ -1529,6 +1529,7 @@ function registrerBigAir(eralBigAir, grader){
   if (!eralBigAir) return null;
   if (grader <= bigAirRekord) return '🛬 Big air: ' + grader + '° spinn';
   bigAirRekord = grader;
+  sendScore(spillerNavn, grader);   // lagre ny personlig rekord på online-leaderboardet
   if (!leaderboardSlatt && grader > LEADERBOARD[0].g){
     leaderboardSlatt = true;
     const b = Math.round(100 * rankMult()); penger += b; oppdaterHud();
@@ -2491,14 +2492,45 @@ document.querySelectorAll('#pengeknapper button').forEach(b => b.addEventListene
   oppdaterHud();
   visTrikstekst('💰 +' + b.dataset.ppenger + ' (admin)', '#ffd34e');
 }));
+// ---- Online highscore (Cloudflare D1 via /api/scores) ----
+let onlineScores = null;     // siste hentede topp-liste fra serveren (null = ikke hentet / offline)
+async function hentOnlineScores(){
+  try {
+    const r = await fetch('/api/scores');
+    if (r.ok){ onlineScores = await r.json(); }
+  } catch (e){ /* offline / lokalt -> bruk lokal liste */ }
+  renderLbListe();
+}
+async function sendScore(navn, grader){
+  try {
+    const r = await fetch('/api/scores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, grader })
+    });
+    if (r.ok){ onlineScores = await r.json(); renderLbListe(); }
+  } catch (e){ /* offline -> hopp over */ }
+}
 function visLeaderboard(){
   document.getElementById('navninput').value = spillerNavn;
   renderLbListe();
+  hentOnlineScores();          // oppdater fra serveren når man åpner leaderboardet
   oppdaterAdminSeksjon();
 }
 function renderLbListe(){
-  const alle = LEADERBOARD.concat([{ navn:spillerNavn, g:bigAirRekord, deg:true }]);
+  let alle;
+  if (Array.isArray(onlineScores)){
+    // ekte online-liste fra serveren
+    alle = onlineScores.map(e => ({ navn:e.navn, g:e.grader }));
+    const meg = alle.find(e => e.navn === spillerNavn);
+    if (meg){ if (bigAirRekord > meg.g) meg.g = bigAirRekord; meg.deg = true; }
+    else if (bigAirRekord > 0 || spillerNavn !== 'Hopperen'){ alle.push({ navn:spillerNavn, g:bigAirRekord, deg:true }); }
+  } else {
+    // fallback (lokalt / offline)
+    alle = LEADERBOARD.concat([{ navn:spillerNavn, g:bigAirRekord, deg:true }]);
+  }
   alle.sort((a,b)=> b.g - a.g);
+  alle = alle.slice(0, 10);
   const liste = document.getElementById('lbliste'); liste.innerHTML = '';
   alle.forEach((e,i)=>{
     const rad = document.createElement('div');
@@ -2561,6 +2593,7 @@ function tegnAvatar(){
 
 tegnAvatar();
 oppdaterHud();
+hentOnlineScores();            // hent online highscores ved oppstart
 requestAnimationFrame(løkke);
 </script>
 </body>
