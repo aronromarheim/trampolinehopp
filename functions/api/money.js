@@ -33,9 +33,26 @@ export async function onRequestPost({ env, request }) {
   return Response.json(results ?? []);
 }
 
-function feil(melding) {
+// DELETE -> fjern en spiller fra topplisten (kun "aron" får lov)
+export async function onRequestDelete({ env, request }) {
+  let data;
+  try { data = await request.json(); } catch { return feil("ugyldig json"); }
+
+  const av = (data && data.av != null ? String(data.av) : "").trim().toLowerCase();
+  if (av !== "aron") return feil("kun aron kan slette", 403);
+
+  const navn = (data && data.navn != null ? String(data.navn) : "").trim().slice(0, 14);
+  if (!navn) return feil("mangler navn");
+
+  await env.DB.prepare("DELETE FROM money WHERE navn = ?1").bind(navn).run();
+
+  const { results } = await topp(env);
+  return Response.json(results ?? []);
+}
+
+function feil(melding, status = 400) {
   return new Response(JSON.stringify({ error: melding }), {
-    status: 400,
+    status,
     headers: { "Content-Type": "application/json" },
   });
 }
