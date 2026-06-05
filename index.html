@@ -276,6 +276,9 @@
   #restart_ja { font-size: 18px; font-weight: bold; padding: 12px 26px; border: none; border-radius: 99px; background: #e63946; color: #fff; cursor: pointer; box-shadow: 0 5px 0 #a01b28; }
   #restart_nei { font-size: 18px; font-weight: bold; padding: 12px 26px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; box-shadow: 0 5px 0 #1e2940; }
   #restart_ja:active, #restart_nei:active { transform: translateY(3px); }
+  #rekordvalg-liste { display: flex; flex-direction: column; gap: 9px; text-align: left; margin: 14px auto 2px; max-width: 320px; }
+  #rekordvalg-liste label { font-size: 17px; display: flex; align-items: center; gap: 11px; cursor: pointer; color: #eaf2ff; }
+  #rekordvalg-liste input { width: 20px; height: 20px; cursor: pointer; flex: none; }
 
   /* Bane-velger og shop (overlays) */
   #banevelger, #shop, #rankshop, #trampshop, #innlogging {
@@ -498,10 +501,19 @@
 
     <div id="restartbekreft" class="hidden">
       <h2>↻ Restarte?</h2>
-      <p>Er du sikker? Da blir <b>alt</b> restartet – penger, baner, ting og rekorder.</p>
+      <p>Baner, ting, merch og ranks nullstilles. Velg hvilke rekorder som <b>også</b> skal nullstilles – fjern haken for å <b>beholde</b> dem.</p>
+      <div id="rekordvalg-liste">
+        <label><input type="checkbox" class="rekordvalg" data-rek="kombo" checked> 🏆 Rekord-kombo</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="hoyde" checked> 📏 Høyderekord</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="bigair" checked> 🚀 Big Air-rekord</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="stjerner" checked> 🌟 Flest stjerner</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="triks" checked> ✅ Triks landet &amp; beste triks</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="nivo" checked> 📊 Nivå &amp; framgang</label>
+        <label><input type="checkbox" class="rekordvalg" data-rek="penger" checked> 💰 Penger</label>
+      </div>
       <div class="knapprad">
-        <button id="restart_ja">Ja, restart</button>
-        <button id="restart_nei">Nei</button>
+        <button id="restart_ja">Fortsett og restart</button>
+        <button id="restart_nei">Avbryt</button>
       </div>
     </div>
 
@@ -2574,7 +2586,27 @@ function kjopTing(i){
 document.getElementById('restartknapp').addEventListener('click', ()=>{
   document.getElementById('restartbekreft').classList.remove('hidden');
 });
-document.getElementById('restart_ja').addEventListener('click', ()=> restartSpill());
+// Rekorder du kan velge å beholde ved restart
+const REKORDER = [
+  { id:'kombo',    les:()=>({rekordKombo}),               sett:s=>{ rekordKombo = s.rekordKombo; } },
+  { id:'hoyde',    les:()=>({maksHoyde}),                 sett:s=>{ maksHoyde = s.maksHoyde; } },
+  { id:'bigair',   les:()=>({bigAirRekord}),              sett:s=>{ bigAirRekord = s.bigAirRekord; } },
+  { id:'stjerner', les:()=>({rekordStjerner}),            sett:s=>{ rekordStjerner = s.rekordStjerner; } },
+  { id:'triks',    les:()=>({antallTriks, besteTriks}),   sett:s=>{ antallTriks = s.antallTriks; besteTriks = s.besteTriks; } },
+  { id:'nivo',     les:()=>({nivo, framgang}),            sett:s=>{ nivo = s.nivo; framgang = s.framgang; } },
+  { id:'penger',   les:()=>({penger}),                    sett:s=>{ penger = s.penger; } },
+];
+document.getElementById('restart_ja').addEventListener('click', ()=>{
+  // ta vare på rekordene du IKKE huket av (de skal beholdes)
+  const behold = [];
+  REKORDER.forEach(r=>{
+    const cb = document.querySelector('.rekordvalg[data-rek="'+r.id+'"]');
+    if (cb && !cb.checked) behold.push({ r, snap: r.les() });
+  });
+  restartSpill();
+  behold.forEach(({ r, snap }) => r.sett(snap));   // gjenopprett de beholdte rekordene
+  oppdaterHud();
+});
 
 function restartSpill(){
   // poeng / penger / rekorder
