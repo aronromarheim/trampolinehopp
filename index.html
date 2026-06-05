@@ -2,7 +2,7 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Trampolinehopp 🤸</title>
 <style>
   :root {
@@ -19,6 +19,8 @@
     -webkit-user-select: none;
     user-select: none;
     overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-touch-callout: none;
   }
   #wrap {
     display: flex;
@@ -37,6 +39,7 @@
     border-radius: 18px;
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    touch-action: none;
   }
   canvas {
     display: block;
@@ -320,6 +323,70 @@
   #proigjen { background: linear-gradient(90deg,#ffd34e,#ff9f1c); color:#1b2a44; box-shadow:0 5px 0 #c97a00; }
   #tilbakeknapp { background:#3a4a63; color:#fff; box-shadow:0 5px 0 #1e2940; }
   #resultat button:active { transform: translateY(3px); }
+
+  /* ===== Mobil / touch ===== */
+  /* ☰-knapp som folder ut sidemenyen (kun touch, og kun når menyen er aktiv) */
+  #menytoggle {
+    display: none;
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    z-index: 5; font-size: 22px; line-height: 1; padding: 9px 13px; border: none;
+    border-radius: 12px; background: rgba(255,255,255,.92); color: #1b2a44;
+    box-shadow: 0 3px 0 rgba(0,0,0,.25); cursor: pointer;
+  }
+  #menytoggle:active { transform: translateY(calc(-50% + 2px)); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+
+  /* Tapp-soner-hint (fader inn første gang man spiller på touch) */
+  #touchhint {
+    position: absolute; inset: 0; z-index: 3; pointer-events: none;
+    display: none; opacity: 0; transition: opacity .4s;
+    font-weight: 900; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.6);
+  }
+  #touchhint.vis { opacity: .85; }
+  #touchhint .sone {
+    position: absolute; bottom: 16%; display: flex; flex-direction: column;
+    align-items: center; gap: 4px; font-size: 15px; text-align: center; width: 33%;
+  }
+  #touchhint .sV { left: 0; }
+  #touchhint .sM { left: 33.5%; }
+  #touchhint .sH { right: 0; }
+  #touchhint .pil { font-size: 30px; }
+
+  /* Roter-til-landskap-melding (kun touch + portrett) */
+  #dreieskjerm {
+    display: none;
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(15,24,40,.96);
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 16px; padding: 30px;
+  }
+  #dreieskjerm .emoji { font-size: 64px; animation: vugg 1.6s ease-in-out infinite; }
+  #dreieskjerm h2 { font-size: 26px; margin: 0; }
+  #dreieskjerm p { font-size: 16px; color: #9fb3d1; margin: 0; max-width: 320px; }
+  @keyframes vugg { 0%,100% { transform: rotate(-12deg); } 50% { transform: rotate(78deg); } }
+
+  /* Touch-skjermer (html.touch settes av JS) */
+  /* Sidemeny skjules bak ☰ og foldes ut med .apen */
+  .touch #sideknapper { display: none; }
+  .touch #sideknapper.apen { display: flex; }
+  .touch #sideknapper:not(.hidden) ~ #menytoggle { display: block; }
+  .touch #sideknapper button { font-size: 14px; padding: 9px 13px; }
+  /* Litt mindre HUD så den ikke spiser spillflaten */
+  .touch .info-tekst { max-width: 140px; }
+  .touch #touchhint { display: block; }
+
+  /* Landskap: la spillflaten fylle høyden */
+  @media (orientation: landscape) {
+    .touch #wrap { gap: 0; }
+    .touch #spillboks {
+      width: 100vh; max-width: 100vw; height: 100vh; max-height: 100vh;
+      border-radius: 0;
+    }
+  }
+
+  /* Portrett på touch: be brukeren snu telefonen */
+  @media (orientation: portrait) {
+    .touch #dreieskjerm { display: flex; }
+  }
 </style>
 </head>
 <body>
@@ -371,6 +438,13 @@
       <button id="nivaaknapp">📊 Nivå-topp</button>
       <button id="rankshopknapp">🎖️ Rank-shop</button>
       <button id="redigerknapp" class="hidden">✏️ Rediger bane</button>
+    </div>
+    <button id="menytoggle" aria-label="Meny">☰</button>
+
+    <div id="touchhint">
+      <div class="sone sV"><span class="pil">↺</span>Backflip</div>
+      <div class="sone sM"><span class="pil">⬆</span>Hold = sprett</div>
+      <div class="sone sH"><span class="pil">↻</span>Frontflip</div>
     </div>
 
     <div id="rankshop" class="hidden">
@@ -2213,6 +2287,69 @@ addEventListener('mouseup', sluttDrag);
 lerret.addEventListener('touchstart', startDrag, {passive:false});
 addEventListener('touchmove', flyttDrag, {passive:false});
 addEventListener('touchend', sluttDrag);
+
+// ---- Touch-deteksjon: markér <html> så touch-stylingen (☰-meny, dreieskjerm, soner) slår inn ----
+if (matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  document.documentElement.classList.add('touch');
+}
+
+// ---- Tapp-soner (mobil): venstre/høyre = snurr, hold hvor som helst = sprett ----
+// Skriver til samme `taster`-objekt som tastaturet, så all spill-logikk gjenbrukes uendret.
+const touchTaster = new Map();   // pointerId -> liste med taster denne fingeren holder nede
+let touchHintVist = false;
+// Tapp-soner er aktive bare når man faktisk spiller (ikke i meny/overlegg eller redigeringsmodus).
+function touchSpillAktiv(){ return spiller && !redigerbar(); }
+function tasterForPunkt(clientX){
+  const r = lerret.getBoundingClientRect();
+  const frac = (clientX - r.left) / r.width;
+  const t = [' '];                       // hold = sprett, uansett hvor man trykker
+  if (frac < 0.34) t.push('ArrowLeft');  // venstre tredjedel = backflip
+  else if (frac > 0.66) t.push('ArrowRight'); // høyre tredjedel = frontflip
+  return t;
+}
+function synkTouchTaster(){
+  const agg = {};
+  for (const liste of touchTaster.values()) for (const k of liste) agg[k] = true;
+  taster[' ']          = !!agg[' '];
+  taster['ArrowLeft']  = !!agg['ArrowLeft'];
+  taster['ArrowRight'] = !!agg['ArrowRight'];
+}
+function visTouchHintEnGang(){
+  if (touchHintVist) return;
+  touchHintVist = true;
+  const h = document.getElementById('touchhint');
+  h.classList.add('vis');
+  setTimeout(()=> h.classList.remove('vis'), 1800);
+}
+lerret.addEventListener('pointerdown', e => {
+  if (e.pointerType !== 'touch' || !touchSpillAktiv()) return;
+  e.preventDefault();
+  touchTaster.set(e.pointerId, tasterForPunkt(e.clientX));
+  synkTouchTaster();
+  visTouchHintEnGang();
+}, {passive:false});
+addEventListener('pointermove', e => {
+  if (e.pointerType !== 'touch' || !touchTaster.has(e.pointerId)) return;
+  touchTaster.set(e.pointerId, tasterForPunkt(e.clientX));   // dra over til en annen sone bytter triks
+  synkTouchTaster();
+});
+function avsluttTouch(e){
+  if (!touchTaster.has(e.pointerId)) return;
+  touchTaster.delete(e.pointerId);
+  synkTouchTaster();
+}
+addEventListener('pointerup', avsluttTouch);
+addEventListener('pointercancel', avsluttTouch);
+
+// ☰ folder sidemenyen ut/inn på touch-skjermer
+document.getElementById('menytoggle').addEventListener('click', ()=>{
+  document.getElementById('sideknapper').classList.toggle('apen');
+});
+// Lukk menyen når man velger noe i den
+document.getElementById('sideknapper').addEventListener('click', e=>{
+  if (e.target.closest('button')) document.getElementById('sideknapper').classList.remove('apen');
+});
+
 // dobbeltklikk for å slette en plassert ting
 lerret.addEventListener('dblclick', e=>{
   if (!redigerbar()) return;
@@ -2596,5 +2733,10 @@ oppdaterHud();
 hentOnlineScores();            // hent online highscores ved oppstart
 requestAnimationFrame(løkke);
 </script>
+<div id="dreieskjerm">
+  <div class="emoji">📱</div>
+  <h2>Snu telefonen 🔄</h2>
+  <p>Trampolinehopp spilles best i landskap (telefonen på siden).</p>
+</div>
 </body>
 </html>
