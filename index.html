@@ -221,13 +221,16 @@
     text-align: center; z-index: 7; padding: 20px;
   }
   #leaderboard h2, #nivaaboard h2, #onlineboard h2 { font-size: 30px; margin: 0 0 4px; }
-  #lbliste, #nbliste, #onlineliste { width: 360px; max-width: 88%; margin-top: 12px; max-height: 62vh; overflow-y: auto; }
+  #lbliste, #lbliste_dag, #nbliste, #onlineliste { width: 360px; max-width: 88%; margin-top: 6px; max-height: 30vh; overflow-y: auto; }
+  .lbtittel { margin-top: 14px; font-weight: bold; color: #ffd34e; }
+  .lbtittel small { font-weight: normal; opacity: .8; }
   .onlinehdr { color: #ffd34e; font-weight: bold; font-size: 15px; text-align: left; margin: 10px 4px 4px; }
   .lbrad {
     display: flex; justify-content: space-between; background: rgba(255,255,255,.92); color: #1b2a44;
     font-weight: bold; font-size: 17px; padding: 10px 16px; border-radius: 10px; margin-bottom: 8px;
   }
   .lbrad.lbdeg { background: linear-gradient(90deg,#ffd34e,#ff9f1c); }
+  .lbrad.lbtom { justify-content: center; background: rgba(255,255,255,.6); color: #3a4a63; font-weight: normal; }
   #lb_lukk, #nb_lukk, #online_lukk { margin-top: 16px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
   #nivaaknapp { background: #cfe9c4; }
   #onlineknapp { font-size: 14px; padding: 7px 14px; border: none; border-radius: 8px; background: #2e8b57; color: #fff; cursor: pointer; margin-left: 6px; }
@@ -466,6 +469,9 @@
     <div id="leaderboard" class="hidden">
       <h2>🏅 Big Air – Leaderboard</h2>
       <div class="vstreak">🌐 Online! Flest grader du spinner på big air vinner!</div>
+      <div class="vstreak lbtittel">☀️ Dagens highscore <small>(nullstilles ved norsk midnatt)</small></div>
+      <div id="lbliste_dag"></div>
+      <div class="vstreak lbtittel">🏆 Gjennom tidene</div>
       <div id="lbliste"></div>
       <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
       <div id="adminseksjon" class="hidden">
@@ -2630,7 +2636,8 @@ document.querySelectorAll('#pengeknapper button').forEach(b => b.addEventListene
   visTrikstekst('💰 +' + b.dataset.ppenger + ' (admin)', '#ffd34e');
 }));
 // ---- Online highscore (Cloudflare D1 via /api/scores) ----
-let onlineScores = null;     // siste hentede topp-liste fra serveren (null = ikke hentet / offline)
+// onlineScores = { today:[{navn,grader}], allTime:[...] }  (null = ikke hentet / offline)
+let onlineScores = null;
 async function hentOnlineScores(){
   try {
     const r = await fetch('/api/scores');
@@ -2654,11 +2661,11 @@ function visLeaderboard(){
   hentOnlineScores();          // oppdater fra serveren når man åpner leaderboardet
   oppdaterAdminSeksjon();
 }
-function renderLbListe(){
+// Tegn én liste (server-data eller lokal fallback) inn i en container
+function tegnLbListe(containerId, serverData){
   let alle;
-  if (Array.isArray(onlineScores)){
-    // ekte online-liste fra serveren
-    alle = onlineScores.map(e => ({ navn:e.navn, g:e.grader }));
+  if (Array.isArray(serverData)){
+    alle = serverData.map(e => ({ navn:e.navn, g:e.grader }));
     const meg = alle.find(e => e.navn === spillerNavn);
     if (meg){ if (bigAirRekord > meg.g) meg.g = bigAirRekord; meg.deg = true; }
     else if (bigAirRekord > 0 || spillerNavn !== 'Hopperen'){ alle.push({ navn:spillerNavn, g:bigAirRekord, deg:true }); }
@@ -2668,7 +2675,8 @@ function renderLbListe(){
   }
   alle.sort((a,b)=> b.g - a.g);
   alle = alle.slice(0, 10);
-  const liste = document.getElementById('lbliste'); liste.innerHTML = '';
+  const liste = document.getElementById(containerId); liste.innerHTML = '';
+  if (!alle.length){ liste.innerHTML = '<div class="lbrad lbtom">Ingen ennå – bli den første! 🚀</div>'; return; }
   alle.forEach((e,i)=>{
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
@@ -2676,6 +2684,12 @@ function renderLbListe(){
     rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>'+e.g+'°</span>';
     liste.appendChild(rad);
   });
+}
+function renderLbListe(){
+  const dag = onlineScores ? onlineScores.today : null;     // null lokalt -> fallback
+  const alle = onlineScores ? onlineScores.allTime : null;
+  tegnLbListe('lbliste_dag', dag);
+  tegnLbListe('lbliste', alle);
 }
 function oppdaterAdminSeksjon(){
   const navn = spillerNavn.trim().toLowerCase();
