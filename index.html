@@ -804,6 +804,7 @@ let bossSnakk = false;           // bossen sier noe (snakkeboble)
 let ekstraLaast = false;         // har du mistet retten til ekstra-navn?
 let aronBetalt = false;          // har du betalt 100 000 for å hete Aron?
 let adminAlt = false;            // admin-kode "aron": alt åpent + evig penger
+let secretShopAktiv = false;     // kode "secret shop": låser opp den hemmelige rank-shopen
 
 // Shop-ting du kan kjøpe til Egen bane (plasseres bak trampolinen)
 const SHOP = [
@@ -818,8 +819,8 @@ const SHOP = [
 const TRAMPOLINER = [
   { id:'standard', navn:'Vanlig trampoline',     pris:0,    info:'Hopper etter nivået ditt' },
   { id:'aksel',    navn:'Aksels trampoline',     pris:1000, maxH:30, bigAir:[100,130], info:'30 m vanlig · 100–130 m på Big Air' },
-  { id:'skole',    navn:'Skole trampoline',      pris:3000, maxH:35, info:'35 m vanlig' },
-  { id:'aron',     navn:'Arons fete trampoline', pris:5000, maxH:35, superSprett:[60,75], info:'35 m vanlig · hvert 3. hopp spretter spretterene deg 60–75 m' },
+  { id:'skole',    navn:'Skole trampoline',      pris:3000, maxH:35, bigAir:[120,150], info:'35 m vanlig · 120–150 m på Big Air' },
+  { id:'aron',     navn:'Arons fete trampoline', pris:5000, maxH:35, bigAir:[150,170], superSprett:[60,75], info:'35 m vanlig · 150–170 m på Big Air · hvert 3. hopp spretter spretterene deg 60–75 m' },
 ];
 let eideTramp = { standard:true };   // trampoliner du eier (id -> true)
 let valgtTramp = 'standard';         // trampolinen du bruker nå
@@ -2583,7 +2584,7 @@ function restartSpill(){
   baneIndex = 0; baneTing = {}; dragTing = null; hemmeligLaastOpp = false; aronHeavenLaastOpp = false; romLaastOpp = false;
   eideMerch = {}; paaMerch = null;
   eideTramp = { standard:true }; valgtTramp = 'standard'; sprettTeller = 0;
-  bossFight = false; bossTapT = -1; bossSnakk = false; ekstraLaast = false; aronBetalt = false; adminAlt = false;
+  bossFight = false; bossTapT = -1; bossSnakk = false; ekstraLaast = false; aronBetalt = false; adminAlt = false; secretShopAktiv = false;
   BANER.forEach((b, i)=> b.eid = (i === 0));      // bare Hagen eid
   TRIKS.forEach(t => t.gjort = false);
   // konkurranse
@@ -3030,7 +3031,7 @@ document.getElementById('rank_lukk').addEventListener('click', ()=>{
 function visRankshop(){
   document.getElementById('rank_penger').textContent = adminAlt ? '♾️' : penger;
   const liste = document.getElementById('rankliste'); liste.innerHTML = '';
-  const secret = !ekstraLaast && spillerNavn.trim().toLowerCase() === 'secret shop';
+  const secret = secretShopAktiv || (!ekstraLaast && spillerNavn.trim().toLowerCase() === 'secret shop');
   const neste = nesteRankIndex();
   RANKS.forEach((r, i)=>{
     const eid = !!eideRanks[i];
@@ -3200,22 +3201,28 @@ document.getElementById('navninput').addEventListener('blur', ()=>{
 document.getElementById('codeknapp').addEventListener('click', ()=>{
   document.getElementById('codeinput').classList.toggle('hidden');
 });
-// skriv "admin adgang" for å låse opp penge-knappene
+// Code-feltet: skriv inn de gamle spesial-navnene som koder for å låse opp ting
 document.getElementById('codeinput').addEventListener('input', e=>{
-  if (ekstraLaast) return;
-  const navn = spillerNavn.trim().toLowerCase();
   const kode = e.target.value.trim().toLowerCase();
-  // admin: penge-knapper
-  document.getElementById('pengeknapper').classList.toggle('hidden', !(navn === 'admin' && kode === 'admin adgang'));
-  // abdullah: lås opp hemmelig bane med "twins"
-  if (navn === 'abdullah' && kode === 'twins' && !hemmeligLaastOpp){
+  // "admin adgang" eller "admin" -> admin penge-knapper + online-oversikt
+  const erAdmin = (kode === 'admin adgang' || kode === 'admin');
+  document.getElementById('pengeknapper').classList.toggle('hidden', !erAdmin);
+  document.getElementById('onlineknapp').classList.toggle('hidden', !erAdmin);
+  // "secret shop" -> lås opp den hemmelige rank-shopen
+  if (kode === 'secret shop' && !secretShopAktiv){
+    secretShopAktiv = true;
+    if (!document.getElementById('rankshop').classList.contains('hidden')) visRankshop();
+    visTrikstekst('🔓 Secret shop låst opp! 🎖️', '#ffd34e');
+  }
+  // "twins" -> lås opp hemmelig bane
+  if (kode === 'twins' && !hemmeligLaastOpp){
     hemmeligLaastOpp = true;
     BANER[HEMMELIG].eid = true;
     renderLbListe();
     visTrikstekst('🔓 Hemmelig bane låst opp! 🏙️', '#ffd34e');
   }
-  // admin: skriv "aron" -> GOD MODE: alle baner + alle shops + all merch + evig penger
-  if (navn === 'admin' && kode === 'aron' && !adminAlt){
+  // "aron" -> GOD MODE: alle baner + alle shops + all merch + evig penger
+  if (kode === 'aron' && !adminAlt){
     adminAlt = true;
     BANER.forEach(b => b.eid = true);                 // alle baner åpne
     hemmeligLaastOpp = true; aronHeavenLaastOpp = true;
@@ -3292,14 +3299,8 @@ function renderLbListe(){
   tegnLbListe('lbliste', alle);
 }
 function oppdaterAdminSeksjon(){
-  const navn = spillerNavn.trim().toLowerCase();
-  const harKode = !ekstraLaast && (navn === 'admin' || navn === 'abdullah');
-  document.getElementById('adminseksjon').classList.toggle('hidden', !harKode);
-  document.getElementById('onlineknapp').classList.toggle('hidden', ekstraLaast || navn !== 'admin');   // online-oversikt kun for admin
-  if (!harKode){   // skjul kode-ting når man ikke har tilgang
-    document.getElementById('codeinput').classList.add('hidden');
-    document.getElementById('pengeknapper').classList.add('hidden');
-  }
+  // Code-feltet er for alle nå: skriv et hemmelig navn (f.eks. "secret shop") for å låse opp ting.
+  document.getElementById('adminseksjon').classList.remove('hidden');
 }
 
 // Startfart: bytt mellom vanlig spinn og "start sakte → enorm fart"
