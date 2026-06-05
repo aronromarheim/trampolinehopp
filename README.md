@@ -15,7 +15,8 @@ Hele spillet er én enkelt, selvstendig HTML-fil – ingen bygg, ingen avhengigh
 Big Air-leaderboardet er ekte online: flest grader du spinner på et big air-hopp
 lagres med navnet ditt på en delt topp-liste (Cloudflare D1-database).
 - To lister: **☀️ Dagens highscore** (nullstilles ved norsk midnatt) og **🏆 Gjennom tidene**.
-- API: `functions/api/scores.js` (`GET` = `{today, allTime}`, `POST` = lagre beste per navn / per dag)
+- **📊 Nivå-topp:** egen liste over de 10 spillerne med høyest nivå.
+- API: `functions/api/scores.js` (`{today, allTime}`) og `functions/api/levels.js` (topp 10 nivå).
 - Kjører du lokalt (uten API) faller spillet pent tilbake til en lokal eksempel-liste.
 
 ## Kjøre lokalt
