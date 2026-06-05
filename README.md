@@ -4,7 +4,7 @@ Et 2D trampolinespill der en gutt hopper på en trampoline og du styrer triksene
 Hele spillet er én enkelt, selvstendig HTML-fil – ingen bygg, ingen avhengigheter.
 
 ## Spill det live
-👉 (live-lenke legges inn her etter at Cloudflare Pages er satt opp)
+👉 **https://trampolinehopp.pages.dev**
 
 ## Slik spiller du
 - **Pil opp / mellomrom** – hopp / pump for høyde
