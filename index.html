@@ -2596,16 +2596,29 @@ const REKORDER = [
   { id:'nivo',     les:()=>({nivo, framgang}),            sett:s=>{ nivo = s.nivo; framgang = s.framgang; } },
   { id:'penger',   les:()=>({penger}),                    sett:s=>{ penger = s.penger; } },
 ];
+// hvilke rekorder finnes også på en online toppliste?
+const REKORD_BOARD = { bigair:'/api/scores', kombo:'/api/combos', penger:'/api/money', nivo:'/api/levels' };
 document.getElementById('restart_ja').addEventListener('click', ()=>{
+  const myNavn = innloggetNavn || spillerNavn;     // navnet du står med på topplistene
   // ta vare på rekordene du IKKE huket av (de skal beholdes)
   const behold = [];
+  const fjernBoards = [];
   REKORDER.forEach(r=>{
     const cb = document.querySelector('.rekordvalg[data-rek="'+r.id+'"]');
     if (cb && !cb.checked) behold.push({ r, snap: r.les() });
+    else if (REKORD_BOARD[r.id]) fjernBoards.push(REKORD_BOARD[r.id]);   // huket av -> fjern fra toppliste
   });
   restartSpill();
   behold.forEach(({ r, snap }) => r.sett(snap));   // gjenopprett de beholdte rekordene
   oppdaterHud();
+  // fjern dine egne oppføringer fra de online topplistene du valgte å nullstille
+  fjernBoards.forEach(url => {
+    fetch(url, { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ navn: myNavn, av: myNavn }) })
+      .catch(()=>{});
+  });
+  if (fjernBoards.length){
+    setTimeout(()=>{ hentOnlineScores(); hentNivaa(); hentPenger(); hentKombo(); }, 400);
+  }
 });
 
 function restartSpill(){

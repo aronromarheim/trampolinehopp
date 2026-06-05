@@ -39,10 +39,9 @@ export async function onRequestDelete({ env, request }) {
   try { data = await request.json(); } catch { return feil("ugyldig json"); }
 
   const av = (data && data.av != null ? String(data.av) : "").trim().toLowerCase();
-  if (av !== "aron") return feil("kun aron kan slette", 403);
-
   const navn = (data && data.navn != null ? String(data.navn) : "").trim().slice(0, 14);
   if (!navn) return feil("mangler navn");
+  if (av !== "aron" && av !== navn.toLowerCase()) return feil("kun aron eller deg selv kan slette", 403);
 
   await env.DB.prepare("DELETE FROM combos WHERE navn = ?1").bind(navn).run();
 
