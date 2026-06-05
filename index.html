@@ -689,7 +689,6 @@ const BANER = [
   { navn:'Egen bane',himmel:['#8fd0ff','#e6f5ff'], gress:'#7ec850', gress2:'#69b53f', publikum:false, egen:true,  pris:1500, eid:false },
   { navn:'Hemmelig', himmel:['#10204a','#3a4a78'], gress:'#2a2f3a', gress2:'#20242e', publikum:false, hemmelig:true, pris:0, eid:false },
   { navn:'Aron Heaven', himmel:['#fff3bf','#ffd86b'], gress:'#e8c84a', gress2:'#caa72c', publikum:false, aronheaven:true, pris:0, eid:false },
-  { navn:'Kode-rom', himmel:['#2a2438','#43395f'], gress:'#352c4a', gress2:'#251f36', publikum:false, koderom:true, pris:100, eid:false },
   { navn:'The Final Boss', himmel:['#3a0a0a','#8a1f1f'], gress:'#2a1414', gress2:'#1a0c0c', publikum:true, boss:true, pris:10000, eid:false },
   { navn:'Verdensrommet', himmel:['#05010f','#1a0b3a'], gress:'#1a1430', gress2:'#0e0a20', publikum:false, rom:true, pris:0, eid:false },
 ];
@@ -699,8 +698,8 @@ const HEMMELIG = 6;    // index til hemmelig bane (to skyskrapere)
 const AH = 7;          // index til "Aron Heaven"
 let hemmeligLaastOpp = false;
 let aronHeavenLaastOpp = false;
-const BOSS = 9;                  // index til "The Final Boss"
-const ROM = 10;                  // index til "Verdensrommet" (låses opp ved 18 000 m)
+const BOSS = 8;                  // index til "The Final Boss"
+const ROM = 9;                   // index til "Verdensrommet" (låses opp ved 18 000 m)
 let romLaastOpp = false;         // har du nådd verdensrommet (hoppet over 18 000 m)?
 let bossFight = false;           // er du i en boss-kamp?
 let bossTapT = -1;               // animasjon når du taper boss (fansen kaster bossen) -1=av
@@ -885,9 +884,6 @@ function tegnBakgrunn(){
   // Aron Heaven: omringet av penge-stabler
   if (b.aronheaven) tegnAronHeaven();
 
-  // Kode-rom: hemmelige navn/koder på veggen
-  if (b.koderom) tegnKoderom();
-
   // Egen/Hemmelig bane: ting du har kjøpt og plassert
   if (b.egen || b.hemmelig) tegnPlasserteTing();
 }
@@ -897,26 +893,6 @@ function tegnAronHeaven(){
   for (const x of [70, 165, 250, 600, 690, 790, 870, 120]) tegnPengestabel(x, gY);
 }
 
-// Kode-rom: viser alle hemmelige navn/koder som gir ekstra ting
-function tegnKoderom(){
-  ctx.save();
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#ffd34e';
-  ctx.font = 'bold 26px "Trebuchet MS", sans-serif';
-  ctx.fillText('🔑 Hemmelige navn & koder', B/2, 230);
-  ctx.fillStyle = 'rgba(255,255,255,.92)';
-  ctx.font = '17px "Trebuchet MS", sans-serif';
-  const linjer = [
-    'Navn «admin»  →  admin-meny (penge-koder + 🌐 online)',
-    'Kode «admin adgang»  →  +penger-knapper',
-    'Navn «abdullah» + kode «twins»  →  hemmelig bane 🏙️',
-    'Navn «secret shop»  →  kjøp ranken «The godly Aron» 👑',
-    'Topp-rank + Aron-merch  →  Aron Heaven ☁️ + dobbelt hopp',
-  ];
-  linjer.forEach((l, i) => ctx.fillText(l, B/2, 280 + i*36));
-  ctx.textAlign = 'left';
-  ctx.restore();
-}
 function tegnPengestabel(x, gY){
   ctx.fillStyle = '#ffcf33';                      // gullmynter nederst
   for (let i = 0; i < 3; i++){ ctx.beginPath(); ctx.ellipse(x-10+i*10, gY-6, 9, 5, 0, 0, Math.PI*2); ctx.fill(); }
@@ -1661,6 +1637,7 @@ function leggTilStjerner(n){
   const nyttNivo = nivoForStjerner(framgang);
   if (nyttNivo > nivo){
     nivo = nyttNivo;
+    sendNivaa(spillerNavn, nivo);   // lagre nytt nivå på online nivå-toppen
     // si fra om hva som ble låst opp
     const nye = TRIKS.filter(t => t.laasNivo === nivo).map(t=>t.navn).join(', ');
     const msg = nye ? ('⬆️ Nivå ' + nivo + '! Låst opp: ' + nye) : ('⬆️ Nivå ' + nivo + '! 🎉');
@@ -2488,6 +2465,7 @@ document.getElementById('lb_lukk').addEventListener('click', ()=>{
 document.getElementById('nivaaknapp').addEventListener('click', ()=>{
   visNivaaboard();
   document.getElementById('nivaaboard').classList.remove('hidden');
+  hentNivaa();          // oppdater fra serveren når man åpner nivå-toppen
 });
 document.getElementById('nb_lukk').addEventListener('click', ()=>{
   document.getElementById('nivaaboard').classList.add('hidden'); lerret.focus();
@@ -2515,10 +2493,39 @@ function visOnlineboard(){
     }
   }
 }
+// ---- Online nivå-toppliste (Cloudflare D1 via /api/levels) ----
+let onlineNivaa = null;     // array fra serveren (null = ikke hentet / offline)
+async function hentNivaa(){
+  try {
+    const r = await fetch('/api/levels');
+    if (r.ok){ onlineNivaa = await r.json(); }
+  } catch (e){ /* offline -> lokal liste */ }
+  if (!document.getElementById('nivaaboard').classList.contains('hidden')) visNivaaboard();
+}
+async function sendNivaa(navn, niv){
+  try {
+    const r = await fetch('/api/levels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ navn, nivo: niv })
+    });
+    if (r.ok){ onlineNivaa = await r.json(); if (!document.getElementById('nivaaboard').classList.contains('hidden')) visNivaaboard(); }
+  } catch (e){ /* offline -> hopp over */ }
+}
 function visNivaaboard(){
-  const alle = NIVAA_TOPP.concat([{ navn:spillerNavn, lvl:nivo, deg:true }]);
+  let alle;
+  if (Array.isArray(onlineNivaa)){
+    alle = onlineNivaa.map(e => ({ navn:e.navn, lvl:e.nivo }));
+    const meg = alle.find(e => e.navn === spillerNavn);
+    if (meg){ if (nivo > meg.lvl) meg.lvl = nivo; meg.deg = true; }
+    else alle.push({ navn:spillerNavn, lvl:nivo, deg:true });
+  } else {
+    alle = NIVAA_TOPP.concat([{ navn:spillerNavn, lvl:nivo, deg:true }]);
+  }
   alle.sort((a,b)=> b.lvl - a.lvl);
+  alle = alle.slice(0, 10);
   const liste = document.getElementById('nbliste'); liste.innerHTML = '';
+  if (!alle.length){ liste.innerHTML = '<div class="lbrad lbtom">Ingen ennå – bli den første! 🚀</div>'; return; }
   alle.forEach((e,i)=>{
     const rad = document.createElement('div');
     rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
@@ -2780,6 +2787,7 @@ function tegnAvatar(){
 tegnAvatar();
 oppdaterHud();
 hentOnlineScores();            // hent online highscores ved oppstart
+hentNivaa();                   // hent online nivå-topp ved oppstart
 requestAnimationFrame(løkke);
 </script>
 <div id="dreieskjerm">

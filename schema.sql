@@ -18,3 +18,11 @@ CREATE TABLE IF NOT EXISTS daily (
   PRIMARY KEY (dag, navn)    -- én rad per navn per dag
 );
 CREATE INDEX IF NOT EXISTS idx_daily ON daily (dag, grader DESC);
+
+-- Nivå-toppliste: høyeste nivå per navn
+CREATE TABLE IF NOT EXISTS levels (
+  navn  TEXT PRIMARY KEY,   -- én rad per navn (høyeste nivå beholdes)
+  nivo  INTEGER NOT NULL,
+  laget INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_levels ON levels (nivo DESC);
