@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trampolinehopp 🤸</title>
+<style>
+  :root {
+    --himmel1: #7ec8ff;
+    --himmel2: #c9ecff;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    height: 100%;
+    font-family: "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+    background: #1b2a44;
+    color: #fff;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+  #wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    flex-direction: column;
+    gap: 10px;
+  }
+  #spillboks {
+    position: relative;
+    width: 900px;
+    max-width: 96vw;
+    max-height: 94vh;
+    aspect-ratio: 900 / 900;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Toppanel med poeng/nivå */
+  #hud {
+    position: absolute;
+    top: 12px; left: 12px; right: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    pointer-events: none;
+    font-weight: bold;
+    text-shadow: 0 2px 4px rgba(0,0,0,.3);
+  }
+  .kort {
+    background: rgba(255,255,255,.85);
+    color: #1b2a44;
+    padding: 8px 14px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2);
+    font-size: 16px;
+    line-height: 1.35;
+  }
+  #stjerner { font-size: 20px; }
+
+  /* Info-bar med hopperens hode + rekorder */
+  #infobar { display: flex; gap: 7px; align-items: center; padding: 5px 9px; }
+  #avatar {
+    width: 36px; height: 36px; border-radius: 50%; background: #cdeaff;
+    flex: 0 0 auto; box-shadow: inset 0 0 0 2px #fff, 0 2px 5px rgba(0,0,0,.15);
+  }
+  .info-tekst { font-size: 9.5px; line-height: 1.32; max-width: 158px; }
+  .info-tekst > div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .info-navn { font-size: 12px; font-weight: 900; margin-bottom: 1px; }
+  .info-tekst b { color: #1b2a44; }
+
+  #nivobar {
+    margin-top: 6px;
+    width: 160px; height: 10px;
+    background: #d9e2ec;
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  #nivofyll {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg,#ffd34e,#ff9f1c);
+    transition: width .3s;
+  }
+
+  /* Triksmelding midt på skjermen */
+  #trikstekst {
+    position: absolute;
+    top: 30%; left: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+    font-size: 24px;
+    font-weight: 900;
+    color: #fff;
+    text-shadow: 0 2px 0 #ff5c8a, 0 3px 10px rgba(0,0,0,.4);
+    opacity: 0;
+    transition: opacity .15s, transform .15s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  #trikstekst.vis { opacity: 1; }
+  #livetriks {
+    position: absolute;
+    top: 22%; left: 50%;
+    transform: translateX(-50%);
+    font-size: 22px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,.5);
+    opacity: 0;
+    transition: opacity .1s;
+    pointer-events: none;
+  }
+  #livetriks.vis { opacity: .95; }
+
+  /* Triksliste nede til høyre */
+  #triksliste {
+    position: absolute;
+    right: 12px; top: 100px;
+    background: rgba(27,42,68,.82);
+    color: #fff;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 10.5px;
+    line-height: 1.5;
+    max-width: 178px;
+    pointer-events: none;
+  }
+  #triksliste b { font-size: 11px; }
+  .laast { opacity: .45; }
+  .gjort { color: #7CFC9B; }
+
+  /* Startskjerm + hjelp */
+  #overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(15,24,40,.86);
+    backdrop-filter: blur(3px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 20px;
+    z-index: 5;
+  }
+  #overlay h1 { font-size: 40px; margin: 0 0 6px; }
+  #overlay p { font-size: 17px; margin: 6px 0; max-width: 560px; line-height: 1.5; }
+  .taster { display:flex; gap:18px; margin:16px 0; flex-wrap:wrap; justify-content:center;}
+  .tast { background:#fff; color:#1b2a44; border-radius:10px; padding:8px 12px; font-weight:bold; min-width:90px;}
+  .tast small { display:block; font-weight:normal; color:#5a6b85; }
+  #startknapp {
+    margin-top: 14px;
+    font-size: 20px;
+    font-weight: bold;
+    padding: 12px 30px;
+    border: none;
+    border-radius: 99px;
+    background: linear-gradient(90deg,#ffd34e,#ff9f1c);
+    color: #1b2a44;
+    cursor: pointer;
+    box-shadow: 0 6px 0 #c97a00;
+  }
+  #startknapp:active { transform: translateY(3px); box-shadow: 0 3px 0 #c97a00; }
+  .hidden { display: none !important; }
+  #undertekst { color:#9fb3d1; font-size:13px; margin-top:6px;}
+
+  /* Knapper på venstre side */
+  #sideknapper {
+    position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 10px; z-index: 4;
+  }
+  #sideknapper { gap: 7px; }
+  #sideknapper button {
+    font-size: 12px; font-weight: bold; padding: 7px 11px; border: none;
+    border-radius: 10px; cursor: pointer; box-shadow: 0 3px 0 rgba(0,0,0,.25);
+    color: #1b2a44; text-align: left; white-space: nowrap;
+  }
+  #sideknapper button:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  #baneknapp { background: #bfe0f5; }
+  #konkknapp { background: linear-gradient(90deg,#ffd34e,#ff9f1c); }
+  #startfartknapp { background: #d7c4f5; }
+
+  /* Vanskelighets-velger */
+  #vanskeligheter {
+    position: absolute; inset: 0; background: rgba(15,24,40,.9); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; z-index: 6; padding: 20px;
+  }
+  #vanskeligheter h2 { font-size: 32px; margin: 0 0 6px; }
+  .vstreak { color: #ffd34e; font-size: 16px; margin-bottom: 18px; }
+  .vrad { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .vknapp {
+    display: flex; flex-direction: column; gap: 6px; align-items: center;
+    font-size: 20px; font-weight: bold; padding: 18px 26px; border: none; border-radius: 16px;
+    cursor: pointer; color: #1b2a44; background: #fff; box-shadow: 0 5px 0 rgba(0,0,0,.3); min-width: 120px;
+  }
+  .vknapp small { font-weight: normal; color: #ff7a00; font-size: 14px; }
+  .vknapp:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(0,0,0,.3); }
+  .vknapp[data-diff="enkelt"]    { background: #b7f0c0; }
+  .vknapp[data-diff="medium"]    { background: #ffe39a; }
+  .vknapp[data-diff="vanskelig"] { background: #ffb3a7; }
+  #vlukk { margin-top: 18px; font-size: 14px; padding: 8px 18px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+  #redigerknapp { background: #ffd0a6; }
+  #leaderboardknapp { background: #ffe39a; }
+
+  /* Leaderboard */
+  #leaderboard, #nivaaboard, #onlineboard {
+    position: absolute; inset: 0; background: rgba(15,24,40,.93); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; z-index: 7; padding: 20px;
+  }
+  #leaderboard h2, #nivaaboard h2, #onlineboard h2 { font-size: 30px; margin: 0 0 4px; }
+  #lbliste, #nbliste, #onlineliste { width: 360px; max-width: 88%; margin-top: 12px; max-height: 62vh; overflow-y: auto; }
+  .onlinehdr { color: #ffd34e; font-weight: bold; font-size: 15px; text-align: left; margin: 10px 4px 4px; }
+  .lbrad {
+    display: flex; justify-content: space-between; background: rgba(255,255,255,.92); color: #1b2a44;
+    font-weight: bold; font-size: 17px; padding: 10px 16px; border-radius: 10px; margin-bottom: 8px;
+  }
+  .lbrad.lbdeg { background: linear-gradient(90deg,#ffd34e,#ff9f1c); }
+  #lb_lukk, #nb_lukk, #online_lukk { margin-top: 16px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+  #nivaaknapp { background: #cfe9c4; }
+  #onlineknapp { font-size: 14px; padding: 7px 14px; border: none; border-radius: 8px; background: #2e8b57; color: #fff; cursor: pointer; margin-left: 6px; }
+  .navnrad { margin-top: 14px; color: #fff; font-size: 15px; }
+  #navninput, #codeinput { font-size: 15px; padding: 6px 10px; border-radius: 8px; border: 2px solid #ccd; margin-left: 6px; width: 150px; }
+  #adminseksjon { margin-top: 12px; }
+  #codeknapp { font-size: 14px; padding: 7px 14px; border: none; border-radius: 8px; background: #2b3a55; color: #9fb3d1; cursor: pointer; }
+  #pengeknapper { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
+  #pengeknapper button { font-size: 15px; font-weight: bold; padding: 8px 14px; border: none; border-radius: 10px; background: linear-gradient(90deg,#ffd34e,#ff9f1c); color: #1b2a44; cursor: pointer; }
+
+  /* Restart-knapp øverst i høyre hjørne */
+  #restartknapp {
+    position: absolute; top: 12px; right: 12px; z-index: 20;
+    font-size: 13px; font-weight: bold; padding: 7px 13px; border: none; border-radius: 10px;
+    background: #e63946; color: #fff; cursor: pointer; box-shadow: 0 3px 0 #a01b28;
+  }
+  #restartknapp:active { transform: translateY(2px); box-shadow: 0 1px 0 #a01b28; }
+  #hoydekort { position: absolute; top: 52px; right: 12px; text-align: right; }
+
+  /* Restart-bekreftelse (midt på skjermen) */
+  #restartbekreft {
+    position: absolute; inset: 0; background: rgba(15,24,40,.9); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; z-index: 30; padding: 20px;
+  }
+  #restartbekreft h2 { font-size: 34px; margin: 0 0 8px; }
+  #restartbekreft p { font-size: 18px; max-width: 460px; line-height: 1.5; }
+  #restartbekreft .knapprad { display: flex; gap: 16px; margin-top: 18px; }
+  #restart_ja { font-size: 18px; font-weight: bold; padding: 12px 26px; border: none; border-radius: 99px; background: #e63946; color: #fff; cursor: pointer; box-shadow: 0 5px 0 #a01b28; }
+  #restart_nei { font-size: 18px; font-weight: bold; padding: 12px 26px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; box-shadow: 0 5px 0 #1e2940; }
+  #restart_ja:active, #restart_nei:active { transform: translateY(3px); }
+
+  /* Bane-velger og shop (overlays) */
+  #banevelger, #shop, #rankshop {
+    position: absolute; inset: 0; background: rgba(15,24,40,.93); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; z-index: 7; padding: 20px;
+  }
+  #banevelger h2, #shop h2, #rankshop h2 { font-size: 30px; margin: 0 0 4px; }
+  #rankshopknapp { background: #ffd9a0; }
+  #rank_lukk { margin-top: 18px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+  .brad { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 780px; margin-top: 10px; }
+  .bkort {
+    display: flex; flex-direction: column; gap: 8px; align-items: center; background: #fff; color: #1b2a44;
+    border-radius: 14px; padding: 14px 16px; min-width: 132px; box-shadow: 0 4px 0 rgba(0,0,0,.3);
+  }
+  .bkort .bnavn { font-weight: bold; font-size: 17px; }
+  .bkort .bpris { font-size: 14px; color: #ff7a00; }
+  .bkort button { font-size: 14px; font-weight: bold; padding: 8px 16px; border: none; border-radius: 99px; cursor: pointer; }
+  .kjop-knapp  { background: linear-gradient(90deg,#ffd34e,#ff9f1c); color: #1b2a44; }
+  .eid-knapp   { background: #7CFC9B; color: #1b2a44; }
+  .laast-knapp { background: #c5ccd6; color: #5a6b85; cursor: not-allowed; }
+  #bane_lukk, #shop_lukk { margin-top: 18px; font-size: 15px; padding: 9px 24px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+
+  /* Konkurranse-panel (øverst i midten) */
+  #konkhud {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(27,42,68,.92); color: #fff; padding: 9px 20px; border-radius: 14px;
+    text-align: center; font-weight: bold; font-size: 16px; line-height: 1.5; z-index: 4;
+    box-shadow: 0 6px 16px rgba(0,0,0,.3);
+  }
+  #konkhud #feilvis { font-size: 17px; letter-spacing: 2px; }
+  .konkrad { display: flex; align-items: center; gap: 18px; justify-content: center; }
+  .konkside { min-width: 118px; }
+  .kslbl { font-size: 12px; opacity: .75; }
+  .ksval { font-size: 23px; }
+  .kskombo { font-size: 12px; color: #ffd34e; }
+  .konktimer { font-size: 42px; font-weight: 900; line-height: 1; color: #ffd34e; }
+  .konktimer .tlbl { font-size: 11px; color: #fff; opacity: .8; font-weight: normal; }
+  .konkbunn { margin-top: 5px; font-size: 14px; }
+  #avsluttknapp { font-size: 13px; padding: 5px 14px; border:none; border-radius: 8px; background:#ff5c5c; color:#fff; cursor:pointer; }
+
+  /* BIG AIR-knapp (nederst i midten under konkurranse) */
+  #bigairknapp {
+    position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+    font-size: 22px; font-weight: 900; letter-spacing: 1px; padding: 12px 30px;
+    border: none; border-radius: 99px; cursor: pointer; z-index: 4; color: #fff;
+    background: linear-gradient(90deg,#49b6ff,#9b5de5); box-shadow: 0 5px 0 #2a3b7a;
+  }
+  #bigairknapp:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 2px 0 #2a3b7a; }
+  #bigairknapp:disabled { opacity: .55; }
+
+  /* Resultatskjerm (game over) */
+  #resultat {
+    position: absolute; inset: 0; background: rgba(15,24,40,.9); backdrop-filter: blur(3px);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 20px; z-index: 6;
+  }
+  #resultat h1 { font-size: 46px; margin: 0 0 10px; }
+  #resultat p { font-size: 18px; margin: 6px 0; line-height: 1.5; }
+  #resultat .knapprad { display:flex; gap:14px; margin-top:18px; flex-wrap:wrap; justify-content:center; }
+  #resultat button { font-size: 18px; font-weight: bold; padding: 12px 24px; border:none; border-radius: 99px; cursor:pointer; }
+  #proigjen { background: linear-gradient(90deg,#ffd34e,#ff9f1c); color:#1b2a44; box-shadow:0 5px 0 #c97a00; }
+  #tilbakeknapp { background:#3a4a63; color:#fff; box-shadow:0 5px 0 #1e2940; }
+  #resultat button:active { transform: translateY(3px); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="spillboks">
+    <canvas id="lerret" width="900" height="900"></canvas>
+
+    <div id="hud">
+      <div class="kort" id="infobar">
+        <canvas id="avatar" width="58" height="58"></canvas>
+        <div class="info-tekst">
+          <div class="info-navn">🤸 <span id="spillernavn">Hopperen</span></div>
+          <div>💰 Penger: <b id="penger">0</b></div>
+          <div>🎖️ <b id="rankvis">Ingen rank</b></div>
+          <div>Nivå <b id="nivotall">1</b> &nbsp;·&nbsp; ⭐ <b id="stjerner">0</b></div>
+          <div>🔥 Kombo: x<b id="frikombo">0</b></div>
+          <div>🌟 Flest stjerner: <b id="rekordstjerner">0</b></div>
+          <div id="nivobar"><div id="nivofyll"></div></div>
+          <div>🏆 Rekord-kombo: x<b id="rekordkombo">0</b></div>
+          <div>📏 Høyderekord: <b id="hoyderekord">0</b> m</div>
+          <div>🤸 Beste triks: <b id="beste">–</b></div>
+          <div>✅ Triks landet: <b id="antalltriks">0</b></div>
+        </div>
+      </div>
+    </div>
+
+    <button id="restartknapp">↻ Restart</button>
+    <div id="hoydekort" class="kort">Høyde nå: <span id="hoyde">0</span> m</div>
+
+    <div id="restartbekreft" class="hidden">
+      <h2>↻ Restarte?</h2>
+      <p>Er du sikker? Da blir <b>alt</b> restartet – penger, baner, ting og rekorder.</p>
+      <div class="knapprad">
+        <button id="restart_ja">Ja, restart</button>
+        <button id="restart_nei">Nei</button>
+      </div>
+    </div>
+
+    <div id="livetriks"></div>
+    <div id="trikstekst"></div>
+
+    <div id="triksliste"></div>
+
+    <div id="sideknapper" class="hidden">
+      <button id="baneknapp">🔄 Bane: Hagen</button>
+      <button id="konkknapp">🏆 Konkurranse</button>
+      <button id="startfartknapp">⚡ Startfart: AV</button>
+      <button id="leaderboardknapp">🏅 Big Air-topp</button>
+      <button id="nivaaknapp">📊 Nivå-topp</button>
+      <button id="rankshopknapp">🎖️ Rank-shop</button>
+      <button id="redigerknapp" class="hidden">✏️ Rediger bane</button>
+    </div>
+
+    <div id="rankshop" class="hidden">
+      <h2>🎖️ Rank-shop</h2>
+      <div class="vstreak">💰 Penger: <b id="rank_penger">0</b> · Ranken ganger opp penger &amp; stjerner!</div>
+      <div id="rankliste" class="brad"></div>
+      <div class="merchhdr">👕 Merch (ta den på!)</div>
+      <div id="merchliste" class="brad"></div>
+      <button id="rank_lukk">Lukk</button>
+    </div>
+
+    <div id="nivaaboard" class="hidden">
+      <h2>📊 Nivå – Toppliste</h2>
+      <div class="vstreak">Hvem har høyest nivå? 🌍 (global topp kommer på nett)</div>
+      <div id="nbliste"></div>
+      <button id="nb_lukk">Lukk</button>
+    </div>
+
+    <div id="leaderboard" class="hidden">
+      <h2>🏅 Big Air – Leaderboard</h2>
+      <div class="vstreak">Flest grader du spinner på big air vinner!</div>
+      <div id="lbliste"></div>
+      <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
+      <div id="adminseksjon" class="hidden">
+        <button id="codeknapp">code:</button>
+        <button id="onlineknapp" class="hidden">🌐 Online</button>
+        <input id="codeinput" class="hidden" placeholder="skriv kode..." />
+        <div id="pengeknapper" class="hidden">
+          <button data-ppenger="100">+100</button>
+          <button data-ppenger="300">+300</button>
+          <button data-ppenger="500">+500</button>
+          <button data-ppenger="1000">+1000</button>
+          <button data-ppenger="10000">+10000</button>
+        </div>
+      </div>
+      <button id="lb_lukk">Lukk</button>
+    </div>
+
+    <div id="onlineboard" class="hidden">
+      <h2>🌐 Spillere</h2>
+      <div class="vstreak">Admin-oversikt (eksempel-data – ekte online krever server)</div>
+      <div id="onlineliste"></div>
+      <button id="online_lukk">Lukk</button>
+    </div>
+
+    <div id="banevelger" class="hidden">
+      <h2>Velg bane</h2>
+      <div class="vstreak">💰 Penger: <b id="bane_penger">0</b></div>
+      <div id="baneliste" class="brad"></div>
+      <button id="bane_lukk">Lukk</button>
+    </div>
+
+    <div id="shop" class="hidden">
+      <h2>🛒 Shop – ting til banen din</h2>
+      <div class="vstreak">💰 Penger: <b id="shop_penger">0</b></div>
+      <div id="shopliste" class="brad"></div>
+      <p style="color:#9fb3d1;font-size:14px;">Det du kjøper havner bak trampolinen – dra det dit du vil!</p>
+      <button id="shop_lukk">Ferdig</button>
+    </div>
+
+    <div id="vanskeligheter" class="hidden">
+      <h2>Velg vanskelighetsgrad</h2>
+      <div class="vstreak">🔥 Vinnstreak: <b id="streakvis">0</b> &nbsp;(+50% premie pr. seier)</div>
+      <div class="vrad">
+        <button class="vknapp" data-diff="enkelt">Enkelt<small>Vinn: 50 ⭐</small></button>
+        <button class="vknapp" data-diff="medium">Medium<small>Vinn: 100 ⭐</small></button>
+        <button class="vknapp" data-diff="vanskelig">Vanskelig<small>Vinn: 300 ⭐</small></button>
+      </div>
+      <button id="vlukk">Avbryt</button>
+    </div>
+
+    <div id="konkhud" class="hidden">
+      <div class="konkrad">
+        <div class="konkside">
+          <div class="kslbl">DU</div>
+          <div class="ksval">⭐<span id="konkstj">0</span></div>
+          <div class="kskombo">Kombo x<span id="kombo">0</span></div>
+        </div>
+        <div class="konktimer"><span id="timer">30</span><div class="tlbl">sek</div></div>
+        <div class="konkside">
+          <div class="kslbl">MOTSTANDER</div>
+          <div class="ksval">⭐<span id="motstj">0</span></div>
+        </div>
+      </div>
+      <div class="konkbunn">Liv: <span id="feilvis">❤️❤️❤️</span> &nbsp; <button id="avsluttknapp">Avslutt</button></div>
+    </div>
+
+    <button id="bigairknapp" class="hidden">🚀 BIG AIR</button>
+
+    <div id="resultat" class="hidden">
+      <h1 id="r_tittel">⏱ Tiden er ute!</h1>
+      <p id="r_melding">Konkurransen er over!</p>
+      <p>Du: <b id="r_stjerner">0</b> ⭐ (beste kombo <b id="r_kombo">x0</b>)<br>
+         Motstander: <b id="r_motstj">0</b> ⭐</p>
+      <p id="r_vinner" style="font-size:26px;font-weight:bold;"></p>
+      <p id="r_premie" style="font-size:18px;font-weight:bold;"></p>
+      <div class="knapprad">
+        <button id="proigjen">Prøv igjen</button>
+        <button id="tilbakeknapp">Tilbake til lek</button>
+      </div>
+    </div>
+
+    <div id="overlay">
+      <h1>🤸 Trampolinehopp</h1>
+      <p>Hjelp gutten med å sprette høyt og gjøre kule triks i lufta!
+         Land pent på beina for å få stjerner. Samle stjerner for å låse opp større triks.</p>
+      <div class="taster">
+        <div class="tast">MELLOMROM<small>Hold for å sprette høyere</small></div>
+        <div class="tast">◀ Venstre<small>Snurr bakover (backflip)</small></div>
+        <div class="tast">Høyre ▶<small>Snurr framover (frontflip)</small></div>
+      </div>
+      <p><b>Tips:</b> Slipp piltasten i tide så han lander rett opp og ned – ellers datt han! 😅</p>
+      <p style="color:#9fb3d1;font-size:14px;">Bytt bane og start en 🏆 konkurranse med knappene på venstre side!</p>
+      <button id="startknapp">Start spillet</button>
+      <div id="undertekst">Laget for deg 💙</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// =======================================================================
+//  TRAMPOLINEHOPP  –  enkelt 2D-spill
+//  Alt ligger i denne ene filen. Du trenger ikke endre noe for å spille.
+// =======================================================================
+
+const lerret = document.getElementById('lerret');
+const ctx = lerret.getContext('2d');
+const B = lerret.width;   // bredde (900)
+const H = lerret.height;  // høyde (600)
+
+// ---- Tastetrykk: vi husker hvilke taster som holdes nede ----
+const taster = {};
+addEventListener('keydown', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;   // la tekstfelt skrive mellomrom osv. normalt
+  if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown',' '].includes(e.key)) e.preventDefault();
+  taster[e.key] = true;
+});
+addEventListener('keyup', e => {
+  if (e.target && e.target.tagName === 'INPUT') return;
+  taster[e.key] = false;
+});
+
+// ---- Verden / fysikk-innstillinger (lett tyngdekraft) ----
+const MAT_Y = 780;          // høyden der trampolinen er (føttene hviler her)
+const GRAVITET = 0.42;      // litt lett tyngdekraft
+const RESTITUSJON = 1.06;   // over 1 = høyere for hvert sprett (bygger seg opp over tid)
+const PUMP = 4.5;           // ekstra sprett-fart når du holder mellomrom (klatrer fortere)
+const MAKS_OPP = -40;       // sikkerhets-tak på fart (høyde-taket stopper ham egentlig)
+const SKALA = 25;           // px per meter
+const MAKS_KART_M = 30;     // kartet (himmelen) er 30 meter høyt
+// Hvor høyt gutten kan hoppe avhenger av nivået (index = nivå).
+// Hvert nivå gir akkurat nok luft til å så vidt klare det nye trikset.
+const MAKS_HOYDE_PER_NIVO = [0, 2, 4, 8, 14, 18];
+function maksHoydeNaa(){
+  return MAKS_HOYDE_PER_NIVO[Math.min(nivo, MAKS_HOYDE_PER_NIVO.length - 1)];
+}
+function takYNaa(){ return MAT_Y - maksHoydeNaa() * SKALA; }
+// Har du på ALT det beste? (topp-rank + topp-merch) -> beholder kombo + hopper dobbelt så høyt
+function fullUtstyrt(){ return !!(rank && rank.hemmelig && paaMerch && paaMerch.type === 'aron'); }
+// Er du den ekte Aron (betalt navn)? -> i boss-kampen lander du ALLTID
+function erAronSpiller(){ return spillerNavn.trim().toLowerCase() === 'aron' && !ekstraLaast && aronBetalt; }
+function maksHoydeEff(){ return maksHoydeNaa() * (fullUtstyrt() ? 2 : 1); }
+const MAKS_SPINN = 1300;    // maks snurrefart i grader/sek – nok margin til å fullføre OG rette opp landingen
+const SPINN_RESPONS = 19;   // hvor raskt han når toppfart – og hvor raskt han stopper når du slipper
+const LANDE_SLINGER = 50;   // hvor "rett" man må lande (grader) for ren landing – større = lettere
+
+// ---- Gutten ----
+const gutt = {
+  x: B/2,
+  y: MAT_Y,
+  vy: 0,            // fart opp/ned
+  vinkel: 0,        // rotasjon i grader (0 = står rett)
+  spinn: 0,         // hvor fort han snurrer
+  paaMat: true,     // står han på matta?
+  varILufta: false,
+  vinkelVedStart: 0,// vinkel da han forlot matta (for å telle rotasjoner)
+  krasjet: 0,       // teller ned etter en stygg landing
+  tuck: 0           // 0..1 hvor mye han krøller seg sammen (når han snurrer)
+};
+
+// ---- Poeng / framgang ----
+let stjerner = 0;
+let nivo = 1;
+let besteTriks = '–';
+let maksHoyde = 0;
+let spiller = false;
+let rekordKombo = 0;   // beste kombo gjennom alle konkurranser
+let antallTriks = 0;   // hvor mange triks du har landet totalt
+let framgang = 0;      // samlet level-progresjon (mistes ALDRI – styrer nivå og framgangslinja)
+let rekordStjerner = 0; // flest stjerner du har hatt på en gang
+let penger = 0;         // penger du har tjent (premie fra konkurranser) – forsvinner aldri
+let kameraZoom = 1;     // 1 = normal, mindre = zoomet ut (BIG AIR)
+
+// ---- Baner (ulike steder å hoppe) ----
+const BANER = [
+  { navn:'Hagen',    himmel:['#7ec8ff','#dff3ff'], gress:'#7ec850', gress2:'#69b53f', publikum:false, natt:false, pris:0,    eid:true  },
+  { navn:'Stadion',  himmel:['#5fa8e0','#cfe9f8'], gress:'#5fae3e', gress2:'#4e9a32', publikum:true,  natt:false, pris:100,  eid:false },
+  { navn:'Stranda',  himmel:['#79d0ff','#eaf8ff'], gress:'#ecd99a', gress2:'#dcc473', publikum:true,  natt:false, pris:300,  eid:false },
+  { navn:'Natt',     himmel:['#0e1b3d','#34406e'], gress:'#284a2c', gress2:'#1d3a21', publikum:true,  natt:true,  pris:500,  eid:false },
+  { navn:'Byfesten', himmel:['#8ec9ef','#e2f1ff'], gress:'#6a6f78', gress2:'#565b63', publikum:true,  event:true, pris:3000, eid:false },
+  { navn:'Egen bane',himmel:['#8fd0ff','#e6f5ff'], gress:'#7ec850', gress2:'#69b53f', publikum:false, egen:true,  pris:1500, eid:false },
+  { navn:'Hemmelig', himmel:['#10204a','#3a4a78'], gress:'#2a2f3a', gress2:'#20242e', publikum:false, hemmelig:true, pris:0, eid:false },
+  { navn:'Aron Heaven', himmel:['#fff3bf','#ffd86b'], gress:'#e8c84a', gress2:'#caa72c', publikum:false, aronheaven:true, pris:0, eid:false },
+  { navn:'Kode-rom', himmel:['#2a2438','#43395f'], gress:'#352c4a', gress2:'#251f36', publikum:false, koderom:true, pris:100, eid:false },
+  { navn:'The Final Boss', himmel:['#3a0a0a','#8a1f1f'], gress:'#2a1414', gress2:'#1a0c0c', publikum:true, boss:true, pris:10000, eid:false },
+  { navn:'Verdensrommet', himmel:['#05010f','#1a0b3a'], gress:'#1a1430', gress2:'#0e0a20', publikum:false, rom:true, pris:0, eid:false },
+];
+let baneIndex = 0;
+const EGEN_BANE = 5;   // index til "Egen bane"
+const HEMMELIG = 6;    // index til hemmelig bane (to skyskrapere)
+const AH = 7;          // index til "Aron Heaven"
+let hemmeligLaastOpp = false;
+let aronHeavenLaastOpp = false;
+const BOSS = 9;                  // index til "The Final Boss"
+const ROM = 10;                  // index til "Verdensrommet" (låses opp ved 18 000 m)
+let romLaastOpp = false;         // har du nådd verdensrommet (hoppet over 18 000 m)?
+let bossFight = false;           // er du i en boss-kamp?
+let bossTapT = -1;               // animasjon når du taper boss (fansen kaster bossen) -1=av
+let bossSnakk = false;           // bossen sier noe (snakkeboble)
+let ekstraLaast = false;         // har du mistet retten til ekstra-navn?
+let aronBetalt = false;          // har du betalt 100 000 for å hete Aron?
+let adminAlt = false;            // admin-kode "aron": alt åpent + evig penger
+
+// Shop-ting du kan kjøpe til Egen bane (plasseres bak trampolinen)
+const SHOP = [
+  { type:'redbull',    navn:'Red Bull-telt', pris:300 },
+  { type:'monster',    navn:'Monster-telt',  pris:300 },
+  { type:'skyskraper', navn:'Skyskraper',    pris:200 },
+  { type:'stadion',    navn:'Stadion-plass', pris:400 },
+  { type:'person',     navn:'Person',        pris:100 },
+  { type:'fly',        navn:'Fint fly ✈️',   pris:800 },
+];
+let baneTing = {};        // ting plassert per bane: {baneIndex: [{type, x, y}, ...]}
+let dragTing = null;      // tingen du drar på akkurat nå
+function tingArr(){ if (!baneTing[baneIndex]) baneTing[baneIndex] = []; return baneTing[baneIndex]; }
+function redigerbar(){ const b = BANER[baneIndex]; return (b.egen || b.hemmelig) && b.eid && !konkurranse; }
+
+// ---- Konkurranse ----
+let konkurranse = false;
+let kombo = 0, maksKombo = 0, feil = 0, konkStjerner = 0;
+let konkTid = 30, spillerUte = false;   // 30 sek nedtelling + om du er ute
+let bigAirAktiv = false, bigAirTeller = 0;  // BIG AIR: hjelperne lader opp et kjempehopp
+let bigAirFlyr = false;                     // er du i lufta etter et big air-kjempehopp?
+let bigAirKrasj = false, bakT = 0;          // krasj-sekvens (hjelpere samles + 5 ambulanser)
+let bakVinner = 0;                          // hvilken ambulansearbeider som "vinner" deg
+const BAK_AMB = [110, 290, 470, 650, 800];  // x-posisjoner til de 5 ambulansene
+let bigAirToppM = 0;                         // høyeste punkt i det pågående big air-hoppet
+let bigAirRekord = 0;                        // flest GRADER du har spunnet på en landet big air
+let leaderboardSlatt = false;                // har du slått førsteplassen?
+let spillerNavn = 'Hopperen';                // navnet ditt (info-bar + leaderboard) – kan endres
+const LEADERBOARD = [                         // andre "spillere" sine big air-rekorder (grader)
+  { navn:'Jordan', g:5040 }, { navn:'Mia', g:4320 }, { navn:'Leo', g:3600 }, { navn:'Nora', g:2880 }, { navn:'Ola', g:2160 },
+];
+const NIVAA_TOPP = [                          // andre "spillere" sine nivåer
+  { navn:'Jordan', lvl:12 }, { navn:'Mia', lvl:9 }, { navn:'Leo', lvl:7 }, { navn:'Nora', lvl:5 }, { navn:'Ola', lvl:3 },
+];
+// Ranks: ganger opp (eller ned) penger og stjerner du tjener
+const RANKS = [
+  { navn:'akslaks',                              mult:0.5, pris:10 },
+  { navn:'mr lollipop',                          mult:1.5, pris:1000 },
+  { navn:'elspark leknes følger',                mult:2,   pris:3000 },
+  { navn:'elspark leknes mafia medlem',          mult:3,   pris:4000 },
+  { navn:'Follower of the high and migthy Aron', mult:5,   pris:5000 },
+  { navn:'The godly Aron',                       mult:10,  pris:15000, hemmelig:true },
+];
+let rank = null;                              // din nåværende rank (null = ingen)
+function rankMult(){ return rank ? rank.mult : 1; }   // rank-multiplikator gjelder (også i boss-kamp)
+
+// Merch du kan kjøpe og ha på (endrer genseren til gutten)
+const MERCH = [
+  { type:'redbull', navn:'Red Bull merch',      pris:500,  genser:'#001489', logo:'RB', logofarge:'#ffd400' },
+  { type:'monster', navn:'Monster merch',       pris:500,  genser:'#0a0a0a', logo:'M',  logofarge:'#9bff00' },
+  { type:'aron',    navn:'Aron follower merch',  pris:5000, genser:'#6a0dad', logo:'A',  logofarge:'#ffd34e', aura:true },
+];
+let eideMerch = {};        // hvilke merch du eier {type:true}
+let paaMerch = null;       // merchen du har på
+
+const SPILLERE = [                            // admin-oversikt (eksempel-data)
+  { navn:'Jordan', online:true,  penger:5200, lvl:12 },
+  { navn:'Mia',    online:true,  penger:3100, lvl:9 },
+  { navn:'Leo',    online:false, penger:1800, lvl:7 },
+  { navn:'Nora',   online:true,  penger:900,  lvl:5 },
+  { navn:'Sara',   online:false, penger:2600, lvl:8 },
+  { navn:'Ola',    online:false, penger:400,  lvl:3 },
+  { navn:'Kasper', online:true,  penger:150,  lvl:2 },
+];
+
+// Vanskelighetsgrader for konkurransen (motstanderens styrke + premie ved seier)
+const VANSKELIGHETER = {
+  enkelt:    { navn:'Enkelt',    landP:0.35, premie:50,  odds:{1:0.55, 2:0.35, 3:0.09, 4:0.01} },
+  medium:    { navn:'Medium',    landP:0.50, premie:100, odds:{1:0.30, 2:0.45, 3:0.18, 4:0.07} },
+  vanskelig: { navn:'Vanskelig', landP:0.68, premie:300, odds:{1:0.12, 2:0.38, 3:0.35, 4:0.15} },
+};
+let vansk = VANSKELIGHETER.medium;
+let vinnstreak = 0;          // antall seire på rad (+50% premie for hver)
+
+// Spinnmodus: "startfart" = start sakte, men enorm spinnefart til slutt
+let langsomStart = false;
+let spinnHoldT = 0;          // hvor lenge du har holdt snurr-tasten (for langsom start)
+const ENORM_SPINN = 2800;    // toppfart i langsom-start-modus
+let gameover = false, ambT = 0, ambX = B + 220, guttSkjult = false, resultatVist = false;
+const AMB = { inn0:1.2, inn1:3.0, last0:3.0, last1:4.2, ut0:4.2, ut1:6.0 };
+
+// Spillerens trampoline (flyttes til venstre i konkurranse, motstander til høyre)
+let friLekNivo = 1;
+let tramX = B/2, tramW = 230, oppW = 150;
+// Motstander (en annen hopper ved siden av deg i konkurranse)
+const oppGutt = { x: B/2 + 330, y: MAT_Y, vy:0, vinkel:0, spinn:0, tuck:0,
+                  paaMat:true, varILufta:false, vinkelVedStart:0,
+                  rot:1, dir:-1, lander:true, stjerner:0, kombo:0, feil:0, ute:false,
+                  melding:'', meldingT:0, startForsink:0 };
+
+// Triks man kan låse opp. "rot" = antall rotasjoner som kreves.
+// Starter med enkel salto fram og bak. Resten låses opp med stjerner.
+const TRIKS = [
+  { navn: 'Frontflip',          rot: 1, retning: 1,  laasNivo: 1, stjerneverdi: 1,  gjort:false },
+  { navn: 'Backflip',           rot: 1, retning: -1, laasNivo: 1, stjerneverdi: 1,  gjort:false },
+  { navn: 'Dobbel frontflip',   rot: 2, retning: 1,  laasNivo: 2, stjerneverdi: 3,  gjort:false },
+  { navn: 'Dobbel backflip',    rot: 2, retning: -1, laasNivo: 2, stjerneverdi: 3,  gjort:false },
+  { navn: 'Trippel backflip',   rot: 3, retning: -1, laasNivo: 3, stjerneverdi: 6,  gjort:false },
+  { navn: 'Trippel frontflip',  rot: 3, retning: 1,  laasNivo: 3, stjerneverdi: 6,  gjort:false },
+  { navn: 'Firedobbel backflip',rot: 4, retning: -1, laasNivo: 4, stjerneverdi: 10, gjort:false },
+  { navn: 'Femdobbel backflip', rot: 5, retning: -1, laasNivo: 5, stjerneverdi: 5,  gjort:false },
+  { navn: 'Femdobbel frontflip',rot: 5, retning: 1,  laasNivo: 5, stjerneverdi: 5,  gjort:false },
+];
+// Hvor mange stjerner som trengs for hvert nivå
+const NIVO_KRAV = [0, 0, 5, 14, 28, 48];   // nivå 1–5
+
+// Hvor mye framgang som trengs for et nivå. Etter nivå 5 stiger kravet
+// med 100, 150, 200, 250, 300 ... (50 mer for hvert nivå) – uendelig.
+function nivoKrav(n){
+  if (n <= 1) return 0;
+  if (n <= 5) return NIVO_KRAV[n];
+  let krav = NIVO_KRAV[5];
+  for (let k = 6; k <= n; k++) krav += 100 + (k - 6) * 50;
+  return krav;
+}
+function nivoForStjerner(s){
+  let n = 1;
+  while (n < 999 && s >= nivoKrav(n + 1)) n++;
+  return n;
+}
+
+// =======================================================================
+//  TEGNING
+// =======================================================================
+
+function tegnBakgrunn(){
+  const b = BANER[baneIndex];
+
+  // himmel
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0, b.himmel[0]);
+  g.addColorStop(1, b.himmel[1]);
+  ctx.fillStyle = g;
+  ctx.fillRect(-6000, -10000, B+12000, H+10000);   // ekstra stor så den dekker når kameraet zoomer langt ut
+
+  // sol eller måne + stjerner
+  if (b.rom){ tegnStjernehimmel(); }
+  else if (b.natt){ tegnStjernehimmel(); tegnMaane(); }
+  else { tegnSol(); }
+
+  // skyer (ingen i verdensrommet, færre om natta)
+  if (b.rom){
+    // ingen skyer i verdensrommet
+  } else if (!b.natt){
+    tegnSky(170, 90, 1);  tegnSky(420, 60, .8);  tegnSky(640, 150, 1.1);
+    tegnSky(250, 320, .9); tegnSky(600, 420, 1);  tegnSky(140, 520, .8);
+  } else {
+    tegnSky(200, 140, .8); tegnSky(560, 90, .7);
+  }
+
+  // byfest: bygninger (bydel) + superhelter på taket + reklameskilt bak publikum
+  if (b.event){ tegnBygninger(); tegnAvengers(); tegnSponsorboard(); }
+
+  // høydemarkører
+  tegnHoydemarkorer();
+
+  // publikum bak trampolinen
+  if (b.publikum) tegnPublikum(b);
+
+  // bakke/gress (ekstra stor for utzoomet kamera)
+  ctx.fillStyle = b.gress;
+  ctx.fillRect(-6000, MAT_Y+70, B+12000, 9000);
+  ctx.fillStyle = b.gress2;
+  ctx.fillRect(-6000, MAT_Y+70, B+12000, 10);
+
+  // byfest: sponsor-booths foran på arenagulvet
+  if (b.event){
+    tegnBooth(95,    '#001489', 'Red Bull', '#ffd400', '#001489');
+    tegnBooth(B-95,  '#0a0a0a', 'MONSTER',  '#9bff00', '#0a0a0a');
+  }
+
+  // Hemmelig bane: to skyskrapere (bakgrunn)
+  if (b.hemmelig) tegnHemmelig();
+
+  // Aron Heaven: omringet av penge-stabler
+  if (b.aronheaven) tegnAronHeaven();
+
+  // Kode-rom: hemmelige navn/koder på veggen
+  if (b.koderom) tegnKoderom();
+
+  // Egen/Hemmelig bane: ting du har kjøpt og plassert
+  if (b.egen || b.hemmelig) tegnPlasserteTing();
+}
+
+function tegnAronHeaven(){
+  const gY = MAT_Y + 70;
+  for (const x of [70, 165, 250, 600, 690, 790, 870, 120]) tegnPengestabel(x, gY);
+}
+
+// Kode-rom: viser alle hemmelige navn/koder som gir ekstra ting
+function tegnKoderom(){
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffd34e';
+  ctx.font = 'bold 26px "Trebuchet MS", sans-serif';
+  ctx.fillText('🔑 Hemmelige navn & koder', B/2, 230);
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  ctx.font = '17px "Trebuchet MS", sans-serif';
+  const linjer = [
+    'Navn «admin»  →  admin-meny (penge-koder + 🌐 online)',
+    'Kode «admin adgang»  →  +penger-knapper',
+    'Navn «abdullah» + kode «twins»  →  hemmelig bane 🏙️',
+    'Navn «secret shop»  →  kjøp ranken «The godly Aron» 👑',
+    'Topp-rank + Aron-merch  →  Aron Heaven ☁️ + dobbelt hopp',
+  ];
+  linjer.forEach((l, i) => ctx.fillText(l, B/2, 280 + i*36));
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+function tegnPengestabel(x, gY){
+  ctx.fillStyle = '#ffcf33';                      // gullmynter nederst
+  for (let i = 0; i < 3; i++){ ctx.beginPath(); ctx.ellipse(x-10+i*10, gY-6, 9, 5, 0, 0, Math.PI*2); ctx.fill(); }
+  for (let r = 0; r < 6; r++){                     // bunke med sedler
+    ctx.fillStyle = (r % 2) ? '#3fae5e' : '#5fc77e';
+    rundtRekt(x-22, gY-14-r*9, 44, 8, 2);
+    ctx.fillStyle = '#1b6b34'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('$', x, gY-10-r*9);
+  }
+  ctx.textAlign = 'left';
+}
+
+function tegnHemmelig(){
+  const gY = MAT_Y + 70;
+  for (const sx of [B*0.34, B*0.64]){
+    const w = 130, h = 560, top = gY - h;
+    ctx.fillStyle = '#3a4a6b'; ctx.fillRect(sx - w/2, top, w, h);
+    ctx.fillStyle = '#2b3650'; ctx.fillRect(sx - w/2 - 6, top - 10, w + 12, 12);   // tak
+    for (let wy = top + 18; wy < gY - 16; wy += 26)
+      for (let wx = sx - w/2 + 14; wx < sx + w/2 - 14; wx += 22){
+        ctx.fillStyle = (((wx + wy) % 3) === 0) ? 'rgba(70,90,130,.6)' : 'rgba(255,240,170,.8)';
+        ctx.fillRect(wx, wy, 11, 16);
+      }
+    ctx.strokeStyle = '#9fb3d1'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(sx, top - 10); ctx.lineTo(sx, top - 40); ctx.stroke();
+    ctx.fillStyle = '#ff5c5c'; ctx.beginPath(); ctx.arc(sx, top - 42, 4, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// Bydel: en skyline med opplyste vinduer bak publikum
+function tegnBygninger(){
+  const horisont = 748;
+  const farger = ['#5b6b8c','#6d7ea3','#4a5a7a','#7a8bb0','#566488'];
+  let x = -10, i = 0;
+  while (x < B + 40){
+    const w = 64 + (i*37 % 56);
+    const h = 130 + (i*53 % 170);
+    const top = horisont - h;
+    ctx.fillStyle = farger[i % farger.length];
+    ctx.fillRect(x, top, w - 6, h);
+    // vinduer
+    for (let wy = top + 14; wy < horisont - 14; wy += 22){
+      for (let wx = x + 9; wx < x + w - 14; wx += 18){
+        ctx.fillStyle = (((wx + wy + i) % 3) === 0) ? 'rgba(60,80,120,.5)' : 'rgba(255,240,170,.75)';
+        ctx.fillRect(wx, wy, 8, 12);
+      }
+    }
+    x += w; i++;
+  }
+}
+
+// Superhelter (Avengers-stil) som står på et hustak bak og gaper av triksene dine
+function tegnAvengers(){
+  const roofY = 505, x0 = 235, x1 = 715, w = x1 - x0;
+  // bygningen de står på
+  ctx.fillStyle = '#3e4d6b'; ctx.fillRect(x0, roofY, w, 748 - roofY);
+  ctx.fillStyle = '#2f3c57'; ctx.fillRect(x0 - 6, roofY - 6, w + 12, 10);   // takkant
+  // vinduer
+  ctx.fillStyle = 'rgba(255,240,170,.55)';
+  for (let wy = roofY + 20; wy < 742; wy += 24){
+    for (let wx = x0 + 14; wx < x1 - 12; wx += 26){
+      if (((wx + wy) % 3) !== 0) ctx.fillRect(wx, wy, 10, 13);
+    }
+  }
+  // heltene – alle med vidåpen munn
+  const helter = [
+    {drakt:'#b71c1c', detalj:'#ffd34e', maske:'#7a0d0d'},                  // rød/gull
+    {drakt:'#1b5e20', detalj:'#103a14', hud:'#7cb342'},                    // grønn kjempe
+    {drakt:'#0d47a1', detalj:'#e53935', kappe:'#c62828', maske:'#0a3576'}, // blå m/rød kappe
+    {drakt:'#212121', detalj:'#5b5b5b', maske:'#000000'},                  // svart
+    {drakt:'#4527a0', detalj:'#b39ddb', kappe:'#5e35b1'},                  // lilla m/kappe
+    {drakt:'#c62828', detalj:'#fdd835'},                                   // rød/gul
+    {drakt:'#00838f', detalj:'#26c6da', maske:'#005b63'},                  // teal
+  ];
+  const n = helter.length, pad = 34;
+  for (let i = 0; i < n; i++){
+    const x = x0 + pad + i * ((w - 2*pad) / (n - 1));
+    tegnHelt(x, roofY - 4, helter[i]);
+  }
+}
+
+function tegnHelt(x, footY, c){
+  ctx.save();
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // kappe bak
+  if (c.kappe){
+    ctx.fillStyle = c.kappe;
+    ctx.beginPath();
+    ctx.moveTo(x-7, footY-38); ctx.lineTo(x+7, footY-38);
+    ctx.lineTo(x+11, footY-3); ctx.lineTo(x-11, footY-3); ctx.closePath(); ctx.fill();
+  }
+  // bein
+  ctx.strokeStyle = c.drakt; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(x-3, footY-18); ctx.lineTo(x-5, footY); ctx.moveTo(x+3, footY-18); ctx.lineTo(x+5, footY); ctx.stroke();
+  // kropp (drakt)
+  ctx.fillStyle = c.drakt; rundtRekt(x-8, footY-40, 16, 24, 4);
+  // beltedetalj
+  ctx.fillStyle = c.detalj; ctx.fillRect(x-8, footY-26, 16, 3);
+  // armer opp (begeistret)
+  ctx.strokeStyle = c.drakt; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x-7, footY-38); ctx.lineTo(x-15, footY-50); ctx.moveTo(x+7, footY-38); ctx.lineTo(x+15, footY-50); ctx.stroke();
+  // hode
+  ctx.fillStyle = c.hud || '#f4c79a'; ctx.beginPath(); ctx.arc(x, footY-49, 7.5, 0, Math.PI*2); ctx.fill();
+  // maske (øyebånd)
+  if (c.maske){ ctx.fillStyle = c.maske; ctx.fillRect(x-7, footY-54, 14, 4.5); }
+  // øyne
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(x-3, footY-52, 1.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+3, footY-52, 1.5, 0, Math.PI*2); ctx.fill();
+  // VIDÅPEN MUNN
+  ctx.fillStyle = '#3a1010';
+  ctx.beginPath(); ctx.ellipse(x, footY-43, 2.7, 3.6, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// Reklameskilt-stripe (Red Bull / Monster) rett over publikum
+function tegnSponsorboard(){
+  const y = 712, h = 33, w = 150;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  let x = 0, i = 0;
+  while (x < B){
+    if (i % 2 === 0){
+      ctx.fillStyle = '#001489'; ctx.fillRect(x, y, w - 4, h);
+      ctx.fillStyle = '#ffd400'; ctx.font = 'bold 17px "Trebuchet MS", sans-serif';
+      ctx.fillText('Red Bull', x + (w-4)/2, y + h/2 + 1);
+    } else {
+      ctx.fillStyle = '#0a0a0a'; ctx.fillRect(x, y, w - 4, h);
+      ctx.fillStyle = '#9bff00'; ctx.font = 'bold 16px "Trebuchet MS", sans-serif';
+      ctx.fillText('MONSTER', x + (w-4)/2, y + h/2 + 1);
+    }
+    x += w; i++;
+  }
+  ctx.textAlign = 'left';
+}
+
+// En sponsor-booth (telt med disk) på arenagulvet
+function tegnBooth(x, frontfarge, tekst, tekstfarge, takfarge){
+  const y = MAT_Y + 70;
+  ctx.save();
+  // tak / parasoll
+  ctx.fillStyle = takfarge;
+  ctx.beginPath();
+  ctx.moveTo(x-72, y-66); ctx.lineTo(x+72, y-66); ctx.lineTo(x+56, y-95); ctx.lineTo(x-56, y-95); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,.3)'; ctx.fillRect(x-56, y-95, 112, 5);
+  // disk
+  ctx.fillStyle = '#e9eef5'; rundtRekt(x-55, y-66, 110, 58, 6);
+  // frontpanel med navn
+  ctx.fillStyle = frontfarge; ctx.fillRect(x-52, y-42, 104, 34);
+  ctx.fillStyle = tekstfarge; ctx.font = 'bold 16px "Trebuchet MS", sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(tekst, x, y-24);
+  // en boks på disken (energidrikk-can)
+  ctx.fillStyle = '#c0c6cf'; rundtRekt(x+24, y-80, 12, 18, 3);
+  ctx.fillStyle = frontfarge; ctx.fillRect(x+24, y-74, 12, 6);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+function tegnSol(){
+  ctx.fillStyle = '#fff3b0';
+  ctx.beginPath(); ctx.arc(B-110, 90, 46, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,243,176,.4)';
+  ctx.beginPath(); ctx.arc(B-110, 90, 66, 0, Math.PI*2); ctx.fill();
+}
+
+function tegnMaane(){
+  ctx.fillStyle = '#f3f1da';
+  ctx.beginPath(); ctx.arc(B-120, 100, 40, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = BANER[baneIndex].himmel[0];   // halvmåne ved å legge en "skygge" oppå
+  ctx.beginPath(); ctx.arc(B-100, 86, 34, 0, Math.PI*2); ctx.fill();
+}
+
+function tegnStjernehimmel(){
+  const pts = [[60,60],[140,120],[230,70],[320,150],[400,50],[500,110],[560,60],
+               [660,130],[740,80],[820,150],[100,210],[300,240],[520,210],[700,260],[840,40],[180,330]];
+  ctx.fillStyle = '#ffffff';
+  for (const [x,y] of pts){ ctx.globalAlpha = .8; ctx.beginPath(); ctx.arc(x,y,1.7,0,Math.PI*2); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+
+// Publikum: rader med små tilskuere på en tribune bak trampolinen
+function tegnPublikum(b){
+  const top = 745, bot = 853;
+  ctx.fillStyle = b.natt ? '#162038' : '#8392aa';
+  ctx.fillRect(0, top, B, bot - top);
+  const farger = ['#ff6b6b','#ffd34e','#4ecdc4','#9b5de5','#f15bb5','#00bbf9','#fee440','#e63946','#06d6a0','#ef476f'];
+  const hudfarger = ['#f4c79a','#e8b58a','#c98a5a','#a96b3a'];
+  for (let rad = 0; rad < 3; rad++){
+    const y = top + 16 + rad*30;
+    const s = 0.8 + rad*0.12;
+    for (let i = 0; i < 23; i++){
+      const x = 14 + i*40 + (rad%2)*20;
+      ctx.fillStyle = farger[(i*7 + rad*3) % farger.length];
+      ctx.beginPath(); ctx.arc(x, y+10*s, 9*s, Math.PI, 0); ctx.fill();
+      ctx.fillRect(x-9*s, y+10*s, 18*s, 12*s);
+      ctx.fillStyle = hudfarger[(i + rad) % hudfarger.length];
+      ctx.beginPath(); ctx.arc(x, y, 7*s, 0, Math.PI*2); ctx.fill();
+    }
+  }
+}
+
+// Tegner stiplede høydelinjer (5,10,...30 m) + en rød strek på maks hopp (18 m)
+function tegnHoydemarkorer(){
+  ctx.save();
+  ctx.font = 'bold 13px "Trebuchet MS", sans-serif';
+  ctx.textBaseline = 'middle';
+  for (let m = 5; m <= MAKS_KART_M; m += 5){
+    const y = MAT_Y - m * SKALA;
+    ctx.strokeStyle = 'rgba(255,255,255,.4)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 10]);
+    ctx.beginPath(); ctx.moveTo(50, y); ctx.lineTo(B-50, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = 'rgba(255,255,255,.8)';
+    ctx.fillText(m + ' m', 14, y);
+  }
+  // maks hopp-streken (stiger med nivå, dobles om fullt utstyrt)
+  const ty = MAT_Y - maksHoydeEff() * SKALA;
+  ctx.strokeStyle = 'rgba(255,92,92,.7)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([12, 7]);
+  ctx.beginPath(); ctx.moveTo(50, ty); ctx.lineTo(B-50, ty); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#ff5c5c';
+  ctx.fillText(maksHoydeEff() + ' m – så høyt du kan hoppe nå', 60, ty - 12);
+  ctx.restore();
+}
+
+function tegnSky(x,y,s){
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  ctx.beginPath();
+  ctx.arc(x, y, 26*s, 0, Math.PI*2);
+  ctx.arc(x+30*s, y+6*s, 22*s, 0, Math.PI*2);
+  ctx.arc(x-28*s, y+8*s, 20*s, 0, Math.PI*2);
+  ctx.arc(x+4*s, y+14*s, 24*s, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function tegnTrampoline(nedtrykk, cx, bredde){
+  if (cx === undefined) cx = tramX;
+  if (bredde === undefined) bredde = tramW;
+  const matY = MAT_Y + 28 + nedtrykk;   // matta synker når man trykker den ned
+
+  // bein
+  ctx.strokeStyle = '#3a4a63';
+  ctx.lineWidth = 9;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(cx-bredde+30, MAT_Y+34); ctx.lineTo(cx-bredde+12, MAT_Y+90);
+  ctx.moveTo(cx+bredde-30, MAT_Y+34); ctx.lineTo(cx+bredde-12, MAT_Y+90);
+  ctx.stroke();
+
+  // ramme
+  ctx.fillStyle = '#2f3e57';
+  ctx.beginPath();
+  ctx.ellipse(cx, MAT_Y+30, bredde, 18, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // selve matta (svart, synker ned når man trykker)
+  ctx.fillStyle = '#10151f';
+  ctx.beginPath();
+  ctx.moveTo(cx-bredde+16, MAT_Y+28);
+  ctx.quadraticCurveTo(cx, matY+ (nedtrykk>0? 14:0), cx+bredde-16, MAT_Y+28);
+  ctx.quadraticCurveTo(cx, matY + (nedtrykk>0? nedtrykk+4 : 8), cx-bredde+16, MAT_Y+28);
+  ctx.fill();
+
+  // fjærstreker
+  ctx.strokeStyle = 'rgba(255,255,255,.35)';
+  ctx.lineWidth = 2;
+  for (let i=-1;i<=1;i+=2){
+    ctx.beginPath();
+    ctx.moveTo(cx + i*(bredde-16), MAT_Y+28);
+    ctx.lineTo(cx + i*(bredde+4), MAT_Y+30);
+    ctx.stroke();
+  }
+}
+
+// Tegner spilleren (gutten).
+function tegnGutt(){
+  // gutten (Subway-Surfers-stil): blå hettegenser + gul caps
+  const c = { genser:'#2f6fb0', bukse:'#2a3550', hud:'#f4c79a', haar:'#5a3a22', lue:'#ffcf33' };
+  if (paaMerch){ c.genser = paaMerch.genser; c.logo = paaMerch.logo; c.logofarge = paaMerch.logofarge; c.aura = paaMerch.aura; }
+  tegnFigur(gutt.x, gutt.y, gutt.vinkel, gutt.tuck, c);
+}
+
+// Tegner en hoppende figur. Roterer hele figuren rundt magen. Brukes til både gutt og motstander.
+function tegnFigur(x, y, vinkel, tuck, c){
+  ctx.save();
+  ctx.translate(x, y - 38);     // 38 = ca midten av kroppen over føttene
+  ctx.rotate(vinkel * Math.PI/180);
+
+  const hud = c.hud, genser = c.genser, bukse = c.bukse, haar = c.haar;
+
+  // aura (infinity aura/rizz) bak figuren
+  if (c.aura){
+    for (const r of [46, 34, 24]){
+      ctx.fillStyle = 'rgba(255,211,78,' + (0.12 + (46-r)/180) + ')';
+      ctx.beginPath(); ctx.arc(0, -8, r, 0, Math.PI*2); ctx.fill();
+    }
+  }
+
+  // bein – strake når rolig, krøllet opp i en ball når han tucker (gjør et triks)
+  ctx.strokeStyle = bukse; ctx.lineWidth = 9; ctx.lineCap='round'; ctx.lineJoin='round';
+  for (const s of [-1, 1]){
+    const hofteX = s*4,  hofteY = 14;
+    const kneX   = s*(9 + tuck*3), kneY = 14 - tuck*20;          // kne opp mot brystet
+    const fotX   = s*(7 - tuck*4), fotY = 14 + (26 - tuck*30);   // fot trekkes opp og inn
+    ctx.beginPath();
+    ctx.moveTo(hofteX, hofteY);
+    ctx.lineTo(kneX, kneY);
+    ctx.lineTo(fotX, fotY);
+    ctx.stroke();
+    // sko
+    ctx.fillStyle = '#222';
+    ctx.beginPath(); ctx.arc(fotX, fotY, 5, 0, Math.PI*2); ctx.fill();
+  }
+
+  // armer – rett opp når rolig, klemmer rundt knærne når han tucker
+  ctx.strokeStyle = hud; ctx.lineWidth = 7;
+  for (const s of [-1, 1]){
+    const skX = s*8, skY = -8;
+    const handX = s*(16 - tuck*9);
+    const handY = -22 + tuck*28;     // -22 (rett opp) -> +6 (rundt knærne)
+    ctx.beginPath();
+    ctx.moveTo(skX, skY);
+    ctx.lineTo(handX, handY);
+    ctx.stroke();
+  }
+
+  // kropp (genser)
+  ctx.fillStyle = genser;
+  rundtRekt(-11, -16, 22, 32, 8);
+  // merch-logo på brystet
+  if (c.logo){
+    ctx.fillStyle = c.logofarge || '#fff';
+    ctx.font = 'bold 10px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(c.logo, 0, 2);
+    ctx.textAlign = 'left';
+  }
+
+  // hode
+  ctx.fillStyle = hud;
+  ctx.beginPath(); ctx.arc(0, -28, 13, 0, Math.PI*2); ctx.fill();
+
+  // hår / caps / politilue
+  if (c.politilue){
+    ctx.fillStyle = c.lue || '#16264a';
+    ctx.fillRect(-15, -30, 30, 4);                 // brem
+    ctx.beginPath(); ctx.arc(0, -32, 13, Math.PI, 2*Math.PI); ctx.fill();
+    ctx.fillRect(-13, -36, 26, 6);                 // topp
+    ctx.fillStyle = '#ffd34e';                     // gull-merke
+    ctx.fillRect(-3, -40, 6, 5);
+  } else if (c.lue){
+    ctx.fillStyle = c.lue;                          // gul caps
+    ctx.beginPath(); ctx.arc(0, -30, 13, Math.PI*1.0, Math.PI*2.0); ctx.fill();
+    ctx.fillRect(-13, -31, 26, 5);
+    ctx.fillRect(-18, -31, 9, 4);                  // brem framover
+  } else {
+    ctx.fillStyle = haar;
+    ctx.beginPath(); ctx.arc(0, -30, 13, Math.PI*1.05, Math.PI*2.0); ctx.fill();
+    ctx.fillRect(-13, -31, 26, 4);
+  }
+
+  // ansikt (øyne)
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(-4, -28, 1.8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(4, -28, 1.8, 0, Math.PI*2); ctx.fill();
+  if (c.bart){
+    ctx.fillStyle = '#888'; ctx.fillRect(-6, -23, 12, 3);   // bart
+  } else {
+    ctx.strokeStyle='#222'; ctx.lineWidth=1.6;             // smil
+    ctx.beginPath(); ctx.arc(0,-25,4,0.1*Math.PI,0.9*Math.PI); ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function rundtRekt(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.fill();
+}
+
+function tegnSkygge(){
+  // skygge på bakken, mindre når han er høyt oppe
+  const hoyde = MAT_Y - gutt.y;
+  const skala = Math.max(.3, 1 - hoyde/500);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath();
+  ctx.ellipse(gutt.x, MAT_Y+58, 40*skala, 10*skala, 0, 0, Math.PI*2);
+  ctx.fill();
+}
+
+// To hjelpere som står på siden og "spretter" gutten – de bøyer i knærne
+// og kaster armene opp akkurat når han treffer matta.
+function tegnHjelpere(){
+  const push = Math.min(1, nedtrykk / 45);   // 0 = rolig, 1 = pusher gutten opp
+  const cx = tramX, bredde = tramW;          // samme som spillerens trampoline
+  const fargeA = {genser:'#2e8b57', bukse:'#3a4a63', hud:'#f4c79a', haar:'#3a2a1a'};
+  const fargeB = {genser:'#8a5cc4', bukse:'#2f3e57', hud:'#e8b58a', haar:'#1d1d1d'};
+  if (bigAirKrasj){
+    // alle 6 hjelperne samler seg ved trampolinen (de blir IKKE med til ambulansen)
+    const off = [-95, -58, -22, 22, 58, 95];
+    for (let i = 0; i < off.length; i++){
+      tegnHjelper(tramX + off[i], off[i] < 0 ? 1 : -1, 0.2, i < 3 ? fargeA : fargeB);
+    }
+  } else if (bigAirAktiv && !konkurranse){
+    // BIG AIR: 3 hjelpere på hver side som spretter deg
+    const frac = [-0.82, -0.5, -0.18, 0.18, 0.5, 0.82];
+    for (let i = 0; i < frac.length; i++){
+      tegnHjelper(cx + frac[i]*(bredde-20), frac[i] < 0 ? 1 : -1, push, i < 3 ? fargeA : fargeB);
+    }
+  } else {
+    // vanlig: én på hver kant
+    tegnHjelper(cx - bredde + 18,  1, push, fargeA);
+    tegnHjelper(cx + bredde - 18, -1, push, fargeB);
+  }
+}
+
+function tegnHjelper(baseX, dir, push, c){
+  const groundY = MAT_Y + 30;   // står på trampoline-rammen (kanten), ikke på gresset
+  ctx.save();
+  ctx.translate(baseX, groundY);
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+
+  const crouch    = push * 14;            // hofta synker når de pusher
+  const hipY      = -52 + crouch;
+  const shoulderY = hipY - 30;
+
+  // bein
+  ctx.strokeStyle = c.bukse; ctx.lineWidth = 9;
+  for (const s of [-1, 1]){
+    const kneY = hipY/2 + crouch*0.6;
+    ctx.beginPath();
+    ctx.moveTo(0, hipY);
+    ctx.lineTo(s*9, kneY);
+    ctx.lineTo(s*8, 0);
+    ctx.stroke();
+  }
+  // sko
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.ellipse(-8,0,6,3,0,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(8,0,6,3,0,0,Math.PI*2); ctx.fill();
+
+  // kropp
+  ctx.fillStyle = c.genser;
+  rundtRekt(-11, shoulderY, 22, (hipY - shoulderY) + 6, 7);
+
+  // armer – langs siden når rolig, opp og innover mot gutten når de pusher
+  ctx.strokeStyle = c.hud; ctx.lineWidth = 7;
+  const skY = shoulderY + 4;
+  const hvileX = -dir*13, hvileY = shoulderY + 28;   // hviler ned
+  const pushX  =  dir*20, pushY  = shoulderY - 24;   // armene opp mot gutten
+  const hX = hvileX + (pushX - hvileX) * push;
+  const hY = hvileY + (pushY - hvileY) * push;
+  for (const off of [-3, 3]){
+    ctx.beginPath();
+    ctx.moveTo(off, skY);
+    ctx.lineTo(hX + off, hY);
+    ctx.stroke();
+  }
+
+  // hode
+  ctx.fillStyle = c.hud;
+  ctx.beginPath(); ctx.arc(0, shoulderY - 13, 11, 0, Math.PI*2); ctx.fill();
+  // hår
+  ctx.fillStyle = c.haar;
+  ctx.beginPath(); ctx.arc(0, shoulderY - 15, 11, Math.PI*1.0, Math.PI*2.0); ctx.fill();
+  ctx.fillRect(-11, shoulderY - 16, 22, 4);
+
+  ctx.restore();
+}
+
+// =======================================================================
+//  SPILL-LOGIKK
+// =======================================================================
+
+let nedtrykk = 0; // hvor mye matta er trykt ned akkurat nå (for tegning)
+
+function oppdater(dt){
+  if (bigAirKrasj){ oppdaterBigAirKrasj(dt); return; }   // big air-krasj-animasjon
+  if (bossTapT >= 0){ oppdaterBossTap(dt); return; }     // fansen kaster bossen
+
+  // konkurranse-timer (30 sekunder)
+  if (konkurranse && !resultatVist){
+    konkTid -= dt;
+    oppdaterTimerHud();
+    if (konkTid <= 0){ konkTid = 0; if (bossFight) avsluttBoss(); else visResultat(); return; }
+  }
+
+  // stopp konkurransen tidlig når resultatet er avgjort
+  if (konkurranse && !resultatVist){
+    // er du ute og ligger bak? -> du kan ikke ta igjen -> motstanderen vinner med en gang
+    if (spillerUte && konkStjerner < oppGutt.stjerner){ visResultat(); return; }
+    // er motstanderen ute og ligger bak? -> du vinner med en gang
+    if (oppGutt.ute && oppGutt.stjerner < konkStjerner){ visResultat(); return; }
+    // begge ute -> stopp uansett
+    if (spillerUte && oppGutt.ute){ visResultat(); return; }
+  }
+
+  // er du ute (bomma 3 ganger)? -> du ligger på trampolinen, men motstanderen fortsetter
+  if (konkurranse && spillerUte){
+    gutt.vinkel += (90 - gutt.vinkel) * 0.12; gutt.vy = 0; gutt.spinn = 0; gutt.tuck = 0;
+    document.getElementById('hoyde').textContent = '0';
+    oppdaterMotstander(dt);
+    return;
+  }
+
+  // --- snurring i lufta ---
+  if (!gutt.paaMat){
+    let dir = 0;
+    if (taster['ArrowLeft'])  dir = -1;            // hold for å snurre bakover
+    else if (taster['ArrowRight']) dir = 1;        // hold for å snurre framover
+    const spinnMult = fullUtstyrt() ? 6 : 1;   // The real Aron snurrer 6x så raskt
+    if (langsomStart){
+      // start sakte, men bygg opp til ENORM fart jo lenger du holder
+      if (dir !== 0){
+        spinnHoldT += dt;
+        // Ekte Aron med "the real Aron" + Startfart: ALDRI noe tak – akselererer i det uendelige
+        const tak = (erAronSpiller() && fullUtstyrt()) ? Infinity : ENORM_SPINN;
+        const fart = Math.min(tak, 150 + 1500 * spinnHoldT * spinnHoldT) * spinnMult;
+        gutt.spinn = dir * fart;
+      } else {
+        spinnHoldT = 0;
+        gutt.spinn += (0 - gutt.spinn) * Math.min(1, SPINN_RESPONS * dt);   // stopp når du slipper
+      }
+    } else {
+      // vanlig: rask respons opp til toppfart
+      gutt.spinn += (dir * MAKS_SPINN * spinnMult - gutt.spinn) * Math.min(1, SPINN_RESPONS * dt);
+    }
+    gutt.vinkel += gutt.spinn * dt;
+    // krøller seg sammen når han snurrer fort
+    const ms = Math.min(1, Math.abs(gutt.spinn)/300);
+    gutt.tuck += (ms - gutt.tuck) * 0.2;
+  }
+
+  // --- tyngdekraft ---
+  gutt.vy += GRAVITET * dt * 60;
+  gutt.y  += gutt.vy * dt * 60;
+
+  // --- kontakt med trampolinen ---
+  if (gutt.y >= MAT_Y && gutt.vy > 0){
+    // han treffer matta på vei ned -> sprett opp igjen
+    const ekteSprett = gutt.varILufta;       // landet nettopp (ett sprett)
+    if (ekteSprett){
+      landing();
+      gutt.varILufta = false;
+    }
+    const fart = gutt.vy;
+    nedtrykk = Math.min(60, fart * 3.2);     // matta dipper ut fra hvor hardt han treffer
+    gutt.vy = -fart * RESTITUSJON;            // sprett tilbake – litt høyere hver gang
+    if (taster[' ']) gutt.vy -= PUMP;         // pump = ekstra høyde, klatrer fortere
+    // begrens sprett-farten så han av seg selv topper ut på makshøyden (dobbelt om fullt utstyrt)
+    const maxFart = -Math.sqrt(0.84 * maksHoydeEff() * SKALA);
+    if (gutt.vy < maxFart) gutt.vy = maxFart;
+
+    // BIG AIR: hjelperne lader opp i 5 sprett, og kaster deg 30–60 m opp på det 6.
+    if (ekteSprett && bigAirAktiv && !konkurranse){
+      bigAirTeller++;
+      if (bigAirTeller >= 6){
+        // Aron med the real Aron-settet på Aron Heaven: 10 000–19 000 m! Ellers 60–100 m (×3 om fullt utstyrt)
+        const romHopp = baneIndex === AH && erAronSpiller() && fullUtstyrt();
+        const maal = romHopp ? (10000 + Math.random() * 9000) : (60 + Math.random() * 40) * (fullUtstyrt() ? 3 : 1);
+        gutt.vy = -Math.sqrt(0.84 * maal * SKALA);             // kjempehopp (overstyrer taket)
+        nedtrykk = 60;
+        bigAirFlyr = true; bigAirToppM = 0;                    // big air-hopp i gang
+        visTrikstekst('🚀 BIG AIR!  ' + Math.round(maal) + ' m!', '#ffd34e');
+        bigAirAktiv = false; bigAirTeller = 0;
+        document.getElementById('bigairknapp').disabled = false;
+      } else {
+        const maal = 16 + bigAirTeller * 2.5;                  // lader opp: 18,5 → 28,5 m
+        gutt.vy = -Math.sqrt(0.84 * maal * SKALA);
+        visTrikstekst('🔋 Lader... ' + bigAirTeller + '/5', '#49b6ff');
+      }
+    }
+
+    gutt.y = MAT_Y;
+    gutt.paaMat = true;
+
+    // rett opp landingen (med mindre han nettopp krasjet)
+    if (gutt.krasjet <= 0){
+      gutt.vinkel = Math.round(gutt.vinkel/360)*360;
+      gutt.spinn = 0;
+      gutt.tuck = 0;
+      spinnHoldT = 0;            // ny start sakte ved neste hopp (langsom-start-modus)
+    }
+  } else {
+    nedtrykk += (0 - nedtrykk) * 0.2;
+    // var på matta, forlater den nå -> START på et nytt hopp
+    if (gutt.paaMat && gutt.vy < 0){
+      gutt.varILufta = true;
+      gutt.vinkelVedStart = gutt.vinkel;
+      gutt.spinn = 0;
+    }
+    gutt.paaMat = false;
+  }
+
+  if (gutt.krasjet > 0) gutt.krasjet -= dt;
+
+  // høyde-måler
+  const hoydeM = Math.max(0, Math.round((MAT_Y - gutt.y)/SKALA));
+  if (hoydeM > maksHoyde){ maksHoyde = hoydeM; document.getElementById('hoyderekord').textContent = maksHoyde; }
+  if (bigAirFlyr && hoydeM > bigAirToppM) bigAirToppM = hoydeM;   // høyeste punkt i big air-hoppet
+  // Over 18 000 m -> låser opp Verdensrommet (kan teleporteres til)
+  if (bigAirFlyr && hoydeM > 18000 && !romLaastOpp){
+    romLaastOpp = true;
+    BANER[ROM].eid = true;
+    visTrikstekst('🌌 18 000 m! Du nådde VERDENSROMMET – ny bane låst opp! 🚀', '#ffd34e', 6);
+  }
+  document.getElementById('hoyde').textContent = hoydeM;
+
+  // live-triks tekst mens han er i lufta
+  oppdaterLiveTriks();
+
+  // motstanderen hopper samtidig
+  if (konkurranse) oppdaterMotstander(dt);
+}
+
+// Når gutten lander: regn ut hvilket triks han gjorde
+function landing(){
+  const eralBigAir = bigAirFlyr; bigAirFlyr = false;   // var dette et big air-hopp? (brukes én gang)
+  const delta = gutt.vinkel - gutt.vinkelVedStart;   // grader snurret
+  const rotasjoner = Math.round(Math.abs(delta)/360);
+  const grader = Math.round(Math.abs(delta));        // hvor mange grader du spant
+  const gradBonus = grader > 1800 ? Math.floor((grader - 1800) / 500) : 0;   // +1 stjerne pr. 500° over 1800°
+  const retning = delta < 0 ? -1 : 1;
+
+  // er han noenlunde rett opp og ned? (ren landing) – større margin på big air
+  const sling = eralBigAir ? 80 : LANDE_SLINGER;
+  let v = ((gutt.vinkel % 360) + 360) % 360;
+  // Aron lander ALLTID mot bossen; The real Aron lander ALLTID på big air – aldri "au" / aldri ambulanse
+  const rett = (v < sling || v > 360 - sling) || (bossFight && erAronSpiller()) || (eralBigAir && fullUtstyrt());
+
+  if (rotasjoner === 0){
+    // bare et vanlig hopp, ingen triks
+    return;
+  }
+
+  if (!rett){
+    // stygg landing -> krasj
+    gutt.krasjet = 0.9;
+    if (konkurranse){
+      if (!fullUtstyrt()) kombo = 0;
+      if (bossFight){
+        visTrikstekst('💥 Bom!', '#ff5c5c');           // ingen kan dø i boss-kampen
+      } else {
+        feil++;
+        visTrikstekst('💥 Bom! (' + feil + '/3)', '#ff5c5c');
+        if (feil >= 3 && !spillerUte) settUte();
+      }
+      oppdaterKonkHud();
+    } else if (eralBigAir){
+      // BIG AIR-krasj -> hjelperne samles + 5 ambulanser kommer
+      if (!fullUtstyrt()){ stjerner = 0; kombo = 0; }
+      oppdaterHud();
+      startBigAirKrasj();
+    } else {
+      // vanlig modus: mister stjerner og kombo – men The real Aron beholder ALT
+      if (!fullUtstyrt()){ stjerner = 0; kombo = 0; }
+      visTrikstekst(fullUtstyrt() ? '💥 Au! (The real Aron mister ingenting!)' : '💥 Au! Du mista alle stjernene!', '#ff5c5c');
+      oppdaterHud();
+    }
+    return;
+  }
+
+  // finn hvilket triks dette er
+  const t = TRIKS.find(t => t.rot === rotasjoner && t.retning === retning);
+  if (!t){
+    antallTriks++;
+    kombo++;                          // alle flips gir +kombo
+    if (kombo > maksKombo) maksKombo = kombo;
+    if (kombo > rekordKombo) rekordKombo = kombo;
+    const bm = registrerBigAir(eralBigAir, grader);
+    const sp = spinnPenger(eralBigAir, grader);
+    const komboTxt = (kombo > 1 ? 'KOMBO x' + kombo + '! ' : '');
+    let p = rotasjoner * kombo + gradBonus;   // kombo-multiplikator + grad-bonus
+    if (konkurranse){ konkStjerner += p; oppdaterKonkHud(); }   // teller ALLTID i konkurranse/boss
+    visTrikstekst((bm || (komboTxt + 'Vilt! (' + (rotasjoner*360) + '°) +' + p + '⭐')) + sp, '#ffd34e');
+    leggTilStjerner(p);   // poeng + grad-bonus
+    return;
+  }
+
+  // (alle flips gir poeng nå – ingen sperre på "låste" triks)
+
+  // RENT TRIKS! 🎉
+  const ekstra = !t.gjort;          // bonus første gang
+  t.gjort = true;
+  antallTriks++;                    // teller alle landede triks
+  // kombo i BEGGE moduser: flere triks på rad gir mer poeng
+  kombo++;
+  if (kombo > maksKombo) maksKombo = kombo;
+  if (kombo > rekordKombo) rekordKombo = kombo;
+  let p = t.stjerneverdi * kombo + gradBonus;   // kombo-multiplikator + grad-bonus
+  const komboTxt = (kombo > 1 ? 'KOMBO x' + kombo + '! ' : '');
+  let tekst;
+  if (konkurranse){
+    konkStjerner += p;
+    tekst = komboTxt + t.navn + ' +' + p + '⭐';
+    oppdaterKonkHud();
+  } else {
+    tekst = komboTxt + (ekstra ? '🆕 ' : '') + t.navn + ' +' + p + '⭐';
+  }
+  const bm = registrerBigAir(eralBigAir, grader);
+  const sp = spinnPenger(eralBigAir, grader);
+  visTrikstekst((bm || tekst) + sp, bm ? '#ffd34e' : '#7CFC9B');
+  besteTriks = t.navn + ' (' + (t.rot*360) + '°)';
+  document.getElementById('beste').textContent = besteTriks;
+  leggTilStjerner(p);
+}
+
+// Registrerer en LANDET big air på leaderboardet. Returnerer en melding (eller null).
+// Penger for mye spinn – BARE på big air, og først fra 5000°: 100 kr for hver hele 1000°.
+function spinnPenger(eralBigAir, grader){
+  if (!eralBigAir || grader < 5000) return '';
+  const b = Math.round(Math.floor(grader / 1000) * 100 * rankMult());
+  penger += b; oppdaterHud();
+  return '  +' + b + '💰';
+}
+function registrerBigAir(eralBigAir, grader){
+  if (!eralBigAir) return null;
+  if (grader <= bigAirRekord) return '🛬 Big air: ' + grader + '° spinn';
+  bigAirRekord = grader;
+  if (!leaderboardSlatt && grader > LEADERBOARD[0].g){
+    leaderboardSlatt = true;
+    const b = Math.round(100 * rankMult()); penger += b; oppdaterHud();
+    return '🥇 ' + grader + '° – du slo førsteplassen! +' + b + ' 💰';
+  }
+  return '📈 Ny rekord: ' + grader + '° spinn!';
+}
+
+function leggTilStjerner(n){
+  n = Math.max(1, Math.round(n * rankMult()));   // ranken ganger opp (eller ned)
+  stjerner += n;
+  framgang += n;                       // level-progresjon (mistes aldri)
+  if (stjerner > rekordStjerner) rekordStjerner = stjerner;   // rekord: flest på en gang
+  const nyttNivo = nivoForStjerner(framgang);
+  if (nyttNivo > nivo){
+    nivo = nyttNivo;
+    // si fra om hva som ble låst opp
+    const nye = TRIKS.filter(t => t.laasNivo === nivo).map(t=>t.navn).join(', ');
+    const msg = nye ? ('⬆️ Nivå ' + nivo + '! Låst opp: ' + nye) : ('⬆️ Nivå ' + nivo + '! 🎉');
+    setTimeout(()=> visTrikstekst(msg, '#ffd34e'), 900);
+  }
+  oppdaterHud();
+}
+
+// =======================================================================
+//  KONKURRANSE + AMBULANSE
+// =======================================================================
+
+function startKonkurranse(diffKey){
+  if (diffKey && VANSKELIGHETER[diffKey]) vansk = VANSKELIGHETER[diffKey];  // valgt grad (ellers samme som sist)
+  document.getElementById('vanskeligheter').classList.add('hidden');
+  friLekNivo = nivo;                                  // husk fri-lek-nivået
+  konkurranse = true; gameover = false; resultatVist = false; guttSkjult = false;
+  kombo = 0; maksKombo = 0; feil = 0; konkStjerner = 0;
+  konkTid = 30; spillerUte = false;                   // 30 sekunder, ikke ute enda
+  bigAirAktiv = false; bigAirTeller = 0; bigAirFlyr = false; bigAirKrasj = false;
+  bossFight = (baneIndex === BOSS); bossTapT = -1;
+  if (bossFight) setTimeout(()=> visTrikstekst('👹 THE FINAL BOSS 👹', '#ff5c5c', 3.5), 50);
+  ambT = 0; ambX = B + 220;
+  nivo = MAKS_HOYDE_PER_NIVO.length - 1;               // maks nivå: maks høyde + alle triks fra start
+  // to trampoliner side om side
+  tramX = 285; tramW = 150; oppW = 150; oppGutt.x = 615;
+  const v0 = Math.sqrt(0.84 * maksHoydeNaa() * SKALA); // start allerede "makset ut"
+  gutt.x = tramX; gutt.y = MAT_Y; gutt.vinkel = 0; gutt.vy = -v0; gutt.krasjet = 0; gutt.spinn = 0; gutt.tuck = 0;
+  // nullstill motstanderen (men behold x)
+  oppGutt.y = MAT_Y; oppGutt.vy = -v0; oppGutt.vinkel = 0; oppGutt.spinn = 0; oppGutt.tuck = 0;
+  oppGutt.paaMat = true; oppGutt.varILufta = false; oppGutt.stjerner = 0;
+  oppGutt.kombo = 0; oppGutt.feil = 0; oppGutt.ute = false;
+  oppGutt.melding = ''; oppGutt.meldingT = 0; oppGutt.startForsink = 0.5;
+  document.getElementById('konkhud').classList.remove('hidden');
+  document.getElementById('bigairknapp').classList.add('hidden');   // BIG AIR er ikke i konkurranse
+  document.getElementById('sideknapper').classList.add('hidden');
+  document.getElementById('infobar').classList.add('hidden');   // info-baren tas vekk i konkurranse
+  document.getElementById('resultat').classList.add('hidden');
+  oppdaterKonkHud(); oppdaterTimerHud();
+  spiller = true;
+}
+
+function avsluttKonkurranse(){
+  konkurranse = false; gameover = false; spillerUte = false; kombo = 0;
+  bigAirAktiv = false; bigAirTeller = 0; bossFight = false; bossTapT = -1; bossSnakk = false;
+  nivo = nivoForStjerner(framgang);                   // tilbake til opptjent nivå
+  tramX = B/2; tramW = 230;                            // tilbake til én sentrert trampoline
+  document.getElementById('konkhud').classList.add('hidden');
+  const bigBtn = document.getElementById('bigairknapp'); bigBtn.classList.remove('hidden'); bigBtn.disabled = false;
+  document.getElementById('resultat').classList.add('hidden');
+  document.getElementById('infobar').classList.remove('hidden');  // info-baren tilbake
+  document.getElementById('sideknapper').classList.remove('hidden');
+  gutt.x = tramX; gutt.y = MAT_Y; gutt.vinkel = 0; gutt.vy = -8; gutt.krasjet = 0;
+  oppdaterRedigerKnapp();
+  spiller = true;
+}
+
+function oppdaterKonkHud(){
+  document.getElementById('kombo').textContent = kombo;
+  document.getElementById('konkstj').textContent = konkStjerner;
+  document.getElementById('motstj').textContent = oppGutt.stjerner;
+  const liv = Math.max(0, 3 - feil);
+  document.getElementById('feilvis').textContent = '❤️'.repeat(liv) + '🖤'.repeat(3 - liv);
+}
+
+// ---- Motstanderen (en annen hopper ved siden av deg) ----
+// Triks-odds avhenger av valgt vanskelighetsgrad.
+function velgMotstanderTriks(){
+  if (bossFight) return { rot: 3 + Math.floor(Math.random() * 3), dir: -1 };   // bare trippel/firedobbel/femdobbel backflip
+  const o = vansk.odds, x = Math.random();
+  let rot;
+  if (x < o[1]) rot = 1;
+  else if (x < o[1] + o[2]) rot = 2;
+  else if (x < o[1] + o[2] + o[3]) rot = 3;
+  else rot = 4;
+  const dir = (Math.random() < 0.5) ? -1 : 1;   // -1 = backflip, 1 = frontflip
+  return { rot, dir };
+}
+
+function oppdaterMotstander(dt){
+  if (gameover) return;
+  if (oppGutt.ute){                              // motstanderen er ute (5 bom) – ligger nede
+    oppGutt.vinkel += (90 - oppGutt.vinkel) * 0.12; oppGutt.vy = 0; oppGutt.spinn = 0; oppGutt.tuck = 0;
+    if (oppGutt.meldingT > 0) oppGutt.meldingT -= dt;
+    return;
+  }
+  if (oppGutt.startForsink > 0){ oppGutt.startForsink -= dt; return; }
+
+  // snurring i lufta
+  if (!oppGutt.paaMat){
+    oppGutt.vinkel += oppGutt.spinn * dt;
+    oppGutt.tuck += (Math.min(1, Math.abs(oppGutt.spinn)/300) - oppGutt.tuck) * 0.2;
+  }
+  // tyngdekraft
+  oppGutt.vy += GRAVITET * dt * 60;
+  oppGutt.y  += oppGutt.vy * dt * 60;
+
+  if (oppGutt.y >= MAT_Y && oppGutt.vy > 0){
+    if (oppGutt.varILufta){ motstanderLander(); oppGutt.varILufta = false; }
+    const v0 = Math.sqrt(0.84 * 18 * SKALA);
+    const klarte = oppGutt.lander;
+    oppGutt.vy = -v0 * (klarte ? 1 : 0.5);        // lavere sprett hvis han bommet
+    oppGutt.y = MAT_Y; oppGutt.paaMat = true; oppGutt.spinn = 0; oppGutt.tuck = 0;
+    if (klarte) oppGutt.vinkel = Math.round(oppGutt.vinkel/360)*360;       // står rett
+    else        oppGutt.vinkel = Math.round(oppGutt.vinkel/360)*360 + 70*oppGutt.dir;  // snubler
+  } else {
+    if (oppGutt.paaMat && oppGutt.vy < 0){
+      // takeoff -> velg triks, bestem om han klarer det (70 %), sett snurrefart
+      oppGutt.varILufta = true;
+      oppGutt.vinkelVedStart = oppGutt.vinkel;
+      const t = velgMotstanderTriks();
+      oppGutt.rot = t.rot; oppGutt.dir = t.dir;
+      oppGutt.lander = bossFight ? true : (Math.random() < vansk.landP);   // bossen lander alltid
+      const v0 = Math.sqrt(0.84 * 18 * SKALA);
+      const airsek = (2 * v0 / GRAVITET) / 60;
+      oppGutt.spinn = t.dir * t.rot * 360 / airsek;
+    }
+    oppGutt.paaMat = false;
+  }
+  if (oppGutt.meldingT > 0) oppGutt.meldingT -= dt;
+}
+
+function motstanderLander(){
+  if (!oppGutt.lander){                            // falt -> ingen poeng, kombo nullstilles (men dør aldri)
+    oppGutt.kombo = 0;
+    oppGutt.melding = '💥 Bom!'; oppGutt.meldingT = 0.9;
+    return;
+  }
+  // landet rent -> kombo og poeng
+  oppGutt.kombo++;
+  const t = TRIKS.find(tt => tt.rot === oppGutt.rot && tt.retning === oppGutt.dir);
+  const navn = t ? t.navn : (oppGutt.rot + 'x flip');
+  const p = (t ? t.stjerneverdi : oppGutt.rot) * oppGutt.kombo;   // kombo-multiplikator
+  oppGutt.stjerner += p;
+  oppGutt.melding = (oppGutt.kombo > 1 ? 'Kombo x' + oppGutt.kombo + '! ' : '') + navn + ' +' + p + '⭐';
+  oppGutt.meldingT = 1.0;
+  oppdaterKonkHud();
+}
+
+function tegnMotstander(){
+  // skygge
+  const hoyde = MAT_Y - oppGutt.y;
+  const sk = Math.max(.3, 1 - hoyde/500);
+  ctx.fillStyle = 'rgba(0,0,0,.18)';
+  ctx.beginPath(); ctx.ellipse(oppGutt.x, MAT_Y+58, 40*sk, 10*sk, 0, 0, Math.PI*2); ctx.fill();
+  // motstanderens trampoline
+  tegnTrampoline(0, oppGutt.x, oppW);
+  // figur: The Final Boss (A-merch + aura) eller vanlig politimann
+  if (bossFight){
+    tegnFigur(oppGutt.x, oppGutt.y, oppGutt.vinkel, oppGutt.tuck,
+              {genser:'#6a0dad', bukse:'#2a1840', hud:'#e8b58a', haar:'#111', logo:'A', logofarge:'#ffd34e', aura:true});
+  } else {
+    tegnFigur(oppGutt.x, oppGutt.y, oppGutt.vinkel, oppGutt.tuck,
+              {genser:'#16336b', bukse:'#0f2042', hud:'#e8b58a', haar:'#888', lue:'#16264a', politilue:true, bart:true});
+  }
+  // boss-snakkeboble når du vinner
+  if (bossSnakk){
+    const bx = oppGutt.x, by = oppGutt.y - 70;
+    ctx.fillStyle = '#fff';
+    rundtRekt(bx - 150, by - 36, 300, 44, 10);
+    ctx.beginPath(); ctx.moveTo(bx-8, by+6); ctx.lineTo(bx+8, by+6); ctx.lineTo(bx-14, by+24); ctx.fill();
+    ctx.fillStyle = '#1b2a44'; ctx.font = 'bold 14px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('«Selvfølgelig klarte Aron å ta meg»', bx, by - 14);
+    ctx.textAlign = 'left';
+  }
+  // melding: fast "💀 Ute!" når han er ute, ellers kort melding når han lander/faller
+  if (oppGutt.ute){
+    ctx.fillStyle = '#ff5c5c'; ctx.font = 'bold 20px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('💀 Ute!', oppGutt.x, MAT_Y - 60);
+    ctx.textAlign = 'left';
+  } else if (oppGutt.meldingT > 0){
+    const farge = oppGutt.melding.indexOf('Fall') >= 0 ? '#ff5c5c' : '#7CFC9B';
+    ctx.fillStyle = farge; ctx.font = 'bold 16px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(oppGutt.melding, oppGutt.x, MAT_Y - 9*SKALA);
+    ctx.textAlign = 'left';
+  }
+}
+
+function oppdaterTimerHud(){
+  const el = document.getElementById('timer');
+  if (el) el.textContent = Math.ceil(Math.max(0, konkTid));
+}
+
+// Spilleren bommet 3 ganger: ute av konkurransen, men beholder poengene til tida er ute
+function settUte(){
+  spillerUte = true;
+  visTrikstekst('🚑 Du er ute! Poengene dine teller fortsatt', '#ff9f1c');
+}
+
+function visResultat(){
+  resultatVist = true;
+  spiller = false;
+  document.getElementById('r_stjerner').textContent = konkStjerner;
+  document.getElementById('r_kombo').textContent = 'x' + maksKombo;
+  document.getElementById('r_motstj').textContent = oppGutt.stjerner;
+  const vant = konkStjerner > oppGutt.stjerner;
+  const uavgjort = konkStjerner === oppGutt.stjerner;
+  const beggeUte = spillerUte && oppGutt.ute;
+  const tidUte = konkTid <= 0;
+  let tittel, melding;
+  if (beggeUte){
+    tittel = '💀 Begge er ute!';
+    melding = 'Både du og motstanderen falt for mange ganger – den med flest poeng vinner.';
+  } else if (tidUte){
+    tittel = '⏱ Tiden er ute!';
+    melding = spillerUte
+      ? 'Du bomma 3 ganger og blei kjørt vekk i ambulansen – men poengene dine teller fortsatt!'
+      : 'Konkurransen er over!';
+  } else if (spillerUte){
+    tittel = '🏁 Avgjort!';
+    melding = 'Du falt 3 ganger og lå bak – motstanderen vant!';
+  } else if (oppGutt.ute){
+    tittel = '🏁 Avgjort!';
+    melding = 'Motstanderen falt 5 ganger og lå bak – du vant!';
+  } else {
+    tittel = '⏱ Tiden er ute!';
+    melding = 'Konkurransen er over!';
+  }
+  document.getElementById('r_tittel').textContent = tittel;
+  document.getElementById('r_melding').textContent = melding;
+  const v = document.getElementById('r_vinner');
+  v.textContent = uavgjort ? '🤝 Uavgjort!' : (vant ? '🏆 Du vant!' : 'Motstanderen vant 😢');
+  v.style.color = vant ? '#7CFC9B' : '#ff9f1c';
+
+  // premie + vinnstreak (+50% for hver seier på rad)
+  let premieTekst;
+  if (vant){
+    const baneFaktor = 1 + baneIndex * 0.25;        // høyere bane = litt mer penger
+    const premie = Math.round(vansk.premie * Math.pow(1.5, vinnstreak) * baneFaktor * rankMult());
+    vinnstreak++;
+    penger += premie;                 // premie blir til penger
+    oppdaterHud();
+    premieTekst = '🏆 ' + vansk.navn + ' på ' + BANER[baneIndex].navn + ': +' + premie + ' 💰  ·  Vinnstreak: ' + vinnstreak + ' 🔥';
+  } else if (uavgjort){
+    premieTekst = 'Ingen premie – vinnstreak beholdt (' + vinnstreak + ')';
+  } else {
+    premieTekst = (vinnstreak > 0) ? '💔 Du tapte – vinnstreaken ryker!' : '💔 Du tapte.';
+    vinnstreak = 0;
+  }
+  document.getElementById('r_premie').textContent = premieTekst;
+
+  document.getElementById('resultat').classList.remove('hidden');
+}
+
+// ---- The Final Boss ----
+function avsluttBoss(){
+  const erAron = erAronSpiller();
+  // bare Aron KAN vinne – men må faktisk slå bossen på stjerner (kan også tape)
+  const vant = erAron && konkStjerner > oppGutt.stjerner;
+  if (vant){
+    spiller = false; bossSnakk = true;
+    setTimeout(()=> { bossSnakk = false; visResultatBoss(true); }, 3500);   // boss sier replikken, så resultat
+  } else {
+    bossTapT = 0;   // du tapte -> fansen stormer og kaster bossen
+  }
+}
+function oppdaterBossTap(dt){
+  bossTapT += dt;
+  gutt.x = tramX; gutt.y = MAT_Y; gutt.vy = 0; gutt.spinn = 0; gutt.tuck = 0;
+  gutt.vinkel += (0 - gutt.vinkel) * 0.1;
+  oppGutt.x = 615;
+  const kast = Math.max(0, bossTapT - 1.2);                       // fansen kommer først
+  const h = (kast > 0) ? (8 + 16 * Math.abs(Math.sin(kast * 3))) : 0;
+  oppGutt.y = MAT_Y - h * SKALA;
+  oppGutt.vinkel += dt * 280; oppGutt.tuck = 0.5;
+  document.getElementById('hoyde').textContent = '0';
+  if (bossTapT > 6){ bossTapT = -1; visResultatBoss(false); }
+}
+function visResultatBoss(vant){
+  resultatVist = true; spiller = false;
+  document.getElementById('r_tittel').textContent = vant ? '👑 Du beseiret bossen!' : '👹 The Final Boss';
+  document.getElementById('r_melding').textContent = vant
+    ? 'Aron klarte det umulige!'
+    : 'Umulig å vinne … med mindre du heter Aron.';
+  document.getElementById('r_stjerner').textContent = konkStjerner;
+  document.getElementById('r_kombo').textContent = 'x' + maksKombo;
+  document.getElementById('r_motstj').textContent = oppGutt.stjerner;
+  const v = document.getElementById('r_vinner');
+  v.textContent = vant ? '🏆 Du vant!' : 'The Final Boss vant 👹';
+  v.style.color = vant ? '#7CFC9B' : '#ff9f1c';
+  document.getElementById('r_premie').textContent = vant ? '🎉 Du slo The Final Boss!' : '';
+  document.getElementById('resultat').classList.remove('hidden');
+}
+// Fansen stormer trampolinen og kaster bossen
+function tegnBossFans(){
+  const farger = ['#ff6b6b','#4ecdc4','#9b5de5','#00bbf9','#fee440','#f15bb5','#06d6a0','#e63946'];
+  for (let i = 0; i < 8; i++){
+    const mal = 615 + (i - 3.5) * 36;
+    const startX = mal + (i % 2 ? 520 : -520);
+    const x = startX + (mal - startX) * Math.min(1, bossTapT / 1.2);
+    tegnHjelper(x, i < 4 ? 1 : -1, 0.7, { genser:farger[i], bukse:'#2f3e57', hud:'#f4c79a', haar:'#222' });
+  }
+}
+
+// Ambulansen står parkert ved siden av spillerens trampoline og venter
+function tegnParkertAmbulanse(){
+  const blink = (Math.floor(konkTid * 4) % 2 === 0);
+  tegnAmbulanseBil(tramX - tramW - 70, MAT_Y + 70, 0.78, blink);
+}
+
+function tegnAmbulanseBil(cx, groundY, s, blink){
+  ctx.save();
+  ctx.translate(cx, groundY); ctx.scale(s, s);
+  ctx.fillStyle = '#ffffff'; rundtRekt(-95,-86,190,78,10);
+  ctx.fillStyle = '#eef1f4'; rundtRekt(-95,-58,42,50,8);
+  ctx.fillStyle = '#bfe0f5'; rundtRekt(-90,-54,30,24,5);
+  ctx.fillStyle = '#e63946'; ctx.fillRect(-52,-50,147,12);
+  ctx.fillStyle = '#e63946'; ctx.fillRect(18,-46,10,30); ctx.fillRect(8,-36,30,10);
+  ctx.fillStyle = blink ? '#49b6ff' : '#1b4f8a'; rundtRekt(-22,-94,44,10,4);
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(-55,-2,16,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(55,-2,16,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#9aa3ad';
+  ctx.beginPath(); ctx.arc(-55,-2,7,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(55,-2,7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#1b2a44'; ctx.font = 'bold 13px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('AMBULANSE', 0, -64);
+  ctx.textAlign = 'left';
+  ctx.restore();
+}
+
+// ---- BIG AIR-krasj: hjelperne samles, så kommer 5 ambulanser med blålys ----
+function startBigAirKrasj(){
+  bigAirKrasj = true; bakT = 0; gutt.krasjet = 99;
+  bakVinner = Math.floor(Math.random() * 5);          // hvem som vinner deg
+  visTrikstekst('💥 Au! Fem ambulanser kommer! 🚑🚑🚑🚑🚑', '#ff5c5c');
+}
+// Tidslinje (sek): 0 hjelpere samles · 1.4–4 ambulanser kjører inn ·
+// 4–5.3 arbeidere kommer ut og krangler · 5.3–6.5 taperne går tilbake ·
+// 6.5–8.3 vinneren bærer deg på båre til ambulansen · 8.3+ lastet inn · 9.5 ferdig
+function oppdaterBigAirKrasj(dt){
+  const før = bakT; bakT += dt;
+  gutt.vy = 0; gutt.spinn = 0; gutt.tuck = 0;
+  gutt.vinkel += (90 - gutt.vinkel) * 0.12;          // ligger nede
+  document.getElementById('hoyde').textContent = '0';
+  const vinnerX = BAK_AMB[bakVinner];
+  if (bakT < 6.5){ gutt.x = tramX; gutt.y = MAT_Y; }                 // ligger på matta
+  else if (bakT < 8.3){ const p=(bakT-6.5)/1.8; gutt.x = tramX + (vinnerX-tramX)*p; gutt.y = MAT_Y - 30; }  // bæres
+  else { gutt.x = vinnerX; gutt.y = MAT_Y - 30; }
+  // meldinger ved faseskift
+  if (før < 4 && bakT >= 4)   visTrikstekst('Arbeiderne krangler om hvem som tar deg! 💢', '#49b6ff');
+  if (før < 6.5 && bakT >= 6.5) visTrikstekst('Én vant – han bærer deg inn! 🚑', '#7CFC9B');
+  if (bakT > 9.5){ bigAirKrasj = false; gutt.krasjet = 0; gutt.vinkel = 0; gutt.vy = -8; gutt.x = tramX; gutt.y = MAT_Y; }
+}
+function tegnBigAirAmbulanser(){
+  const gY = MAT_Y + 70;
+  const fra = [-260, B+260, -260, B+260, -260];       // kommer fra hver sin side
+  const p = Math.max(0, Math.min(1, (bakT - 1.4) / 2.6));   // kjører inn fra bakT 1.4 til 4.0
+  for (let i = 0; i < 5; i++){
+    const x = fra[i] + (BAK_AMB[i] - fra[i]) * p;
+    const blink = (Math.floor(bakT * 7 + i) % 2 === 0);
+    tegnAmbulanseBil(x, gY, 0.5, blink);
+  }
+}
+// Ambulansearbeiderne: kommer ut (4s), krangler, taperne går tilbake, vinneren bærer deg
+function tegnMedics(){
+  if (bakT < 4) return;
+  for (let i = 0; i < 5; i++){
+    const argueX = B/2 + (i - 2) * 30;
+    let x, krangler = false;
+    if (bakT < 5.3){ const p=(bakT-4)/1.3; x = BAK_AMB[i] + (argueX-BAK_AMB[i])*p; krangler = true; }   // ut og samles
+    else if (bakT < 6.5){ const p=(bakT-5.3)/1.2; x = (i===bakVinner)? argueX : argueX + (BAK_AMB[i]-argueX)*p; krangler = (i!==bakVinner); }
+    else if (i === bakVinner){ const p=Math.min(1,(bakT-6.5)/1.8); x = argueX + (BAK_AMB[i]-argueX)*p; }  // bærer mot ambulansen
+    else x = BAK_AMB[i];
+    tegnMedic(x, krangler);
+  }
+}
+function tegnMedic(x, krangler){
+  const gy = MAT_Y + 30;
+  ctx.save(); ctx.lineCap='round'; ctx.lineJoin='round';
+  ctx.strokeStyle = '#2f3e57'; ctx.lineWidth = 6;
+  ctx.beginPath(); ctx.moveTo(x-4, gy-20); ctx.lineTo(x-5, gy); ctx.moveTo(x+4, gy-20); ctx.lineTo(x+5, gy); ctx.stroke();
+  ctx.fillStyle = '#ffffff'; rundtRekt(x-9, gy-44, 18, 26, 5);                 // hvit frakk
+  ctx.fillStyle = '#e63946'; ctx.fillRect(x-2, gy-38, 4, 12); ctx.fillRect(x-6, gy-34, 12, 4);  // rødt kors
+  ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 5;
+  ctx.beginPath(); ctx.moveTo(x-7, gy-40); ctx.lineTo(x-13, gy-30); ctx.moveTo(x+7, gy-40); ctx.lineTo(x+13, gy-30); ctx.stroke();
+  ctx.fillStyle = '#f4c79a'; ctx.beginPath(); ctx.arc(x, gy-52, 8, 0, Math.PI*2); ctx.fill();   // hode
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, gy-54, 8, Math.PI, 2*Math.PI); ctx.fill(); ctx.fillRect(x-8, gy-55, 16, 3);  // lue
+  ctx.fillStyle = '#e63946'; ctx.fillRect(x-1, gy-59, 2, 5); ctx.fillRect(x-2.5, gy-57.5, 5, 2);
+  if (krangler){ ctx.fillStyle = '#ffcc00'; ctx.font = 'bold 18px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('💢', x, gy-66); ctx.textAlign = 'left'; }
+  ctx.restore();
+}
+function tegnBigAirStretcher(){
+  if (bakT < 6.5 || bakT > 8.3) return;
+  const x = gutt.x, y = gutt.y + 12;
+  ctx.fillStyle = '#cfd8e3'; ctx.fillRect(x-44, y-2, 88, 8);
+  ctx.fillStyle = '#3a4a63'; ctx.fillRect(x-40, y+6, 4, 14); ctx.fillRect(x+36, y+6, 4, 14);
+  ctx.fillStyle = '#222';
+  ctx.beginPath(); ctx.arc(x-38, y+22, 5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+38, y+22, 5, 0, Math.PI*2); ctx.fill();
+}
+
+// =======================================================================
+//  TEKST / HUD
+// =======================================================================
+
+let trikstimer = 0;
+function visTrikstekst(tekst, farge, varighet){
+  const el = document.getElementById('trikstekst');
+  el.textContent = tekst;
+  el.style.color = farge;
+  el.classList.add('vis');
+  el.style.transform = 'translate(-50%,-50%) scale(1.15)';
+  trikstimer = varighet || 1.4;
+  setTimeout(()=> el.style.transform = 'translate(-50%,-50%) scale(1)', 120);
+}
+
+function oppdaterLiveTriks(){
+  const el = document.getElementById('livetriks');
+  if (gutt.varILufta && !gutt.paaMat){
+    const delta = gutt.vinkel - gutt.vinkelVedStart;
+    const rot = Math.abs(delta)/360;
+    if (rot > 0.25){
+      const grader = Math.round(Math.abs(delta));
+      const navn = delta < 0 ? 'Backflip' : 'Frontflip';
+      el.textContent = '🌀 ' + navn + '  ' + grader + '°';
+      el.classList.add('vis');
+    } else {
+      el.classList.remove('vis');
+    }
+  } else {
+    el.classList.remove('vis');
+  }
+}
+
+function oppdaterHud(){
+  if (adminAlt) penger = 1e9;   // evig penger – fyll alltid opp
+  document.getElementById('stjerner').textContent = stjerner;
+  document.getElementById('nivotall').textContent = nivo;
+  document.getElementById('beste').textContent = besteTriks;
+  document.getElementById('rekordkombo').textContent = rekordKombo;
+  document.getElementById('hoyderekord').textContent = maksHoyde;
+  document.getElementById('antalltriks').textContent = antallTriks;
+  document.getElementById('frikombo').textContent = kombo;
+  document.getElementById('rekordstjerner').textContent = rekordStjerner;
+  document.getElementById('penger').textContent = adminAlt ? '♾️' : penger;
+  document.getElementById('spillernavn').textContent = spillerNavn;
+  document.getElementById('rankvis').textContent = fullUtstyrt() ? '👑 The real Aron' : (rank ? rank.navn : 'Ingen rank');
+  // framgangsbar mot neste nivå (uendelig)
+  const neste = nivoKrav(nivo + 1);
+  const forrige = nivoKrav(nivo);
+  const pct = Math.min(100, Math.max(0, ((framgang - forrige) / (neste - forrige)) * 100));
+  document.getElementById('nivofyll').style.width = pct + '%';
+  tegnTriksliste();
+}
+
+function tegnTriksliste(){
+  const el = document.getElementById('triksliste');
+  let html = '<b>Triks</b><br>';
+  for (const t of TRIKS){
+    const laast = t.laasNivo > nivo;
+    let rad = (t.gjort ? '✅ ' : (laast ? '🔒 ' : '• ')) + t.navn;
+    if (laast) rad += ' <small>(nivå '+t.laasNivo+')</small>';
+    html += '<div class="'+(laast?'laast':'')+(t.gjort?' gjort':'')+'">'+rad+'</div>';
+  }
+  el.innerHTML = html;
+}
+
+// =======================================================================
+//  HOVEDLØKKE (kjører ca 60 ganger i sekundet)
+// =======================================================================
+
+let forrigeTid = 0;
+function løkke(tid){
+  const dt = Math.min(0.033, (tid - forrigeTid)/1000) || 0.016;
+  forrigeTid = tid;
+
+  if (spiller) oppdater(dt);
+
+  // KAMERA: zoom ut når gutten flyr høyere enn skjermen (BIG AIR), så hele hoppet synes
+  const toppY = Math.min(0, gutt.y - 95);            // høyeste punkt vi vil ha i bildet (litt luft over hodet)
+  const mål = Math.max(0.11, Math.min(1, H / (H - toppY)));
+  if (mål < kameraZoom) kameraZoom = mål;            // zoom UT umiddelbart (alltid vis gutten)
+  else kameraZoom += (mål - kameraZoom) * 0.06;      // zoom INN mykt på vei ned
+
+  ctx.save();
+  if (kameraZoom !== 1){                              // forankret nederst i midten
+    ctx.translate(B/2, H);
+    ctx.scale(kameraZoom, kameraZoom);
+    ctx.translate(-B/2, -H);
+  }
+
+  // tegn alt
+  tegnBakgrunn();
+  tegnSkygge();
+  tegnTrampoline(nedtrykk);
+  tegnHjelpere();
+  if (konkurranse) tegnParkertAmbulanse();   // ambulansen står og venter ved trampolinen din
+  if (bigAirKrasj){ tegnBigAirAmbulanser(); tegnBigAirStretcher(); }   // ambulanser + båre bak gutten
+  if (!(bigAirKrasj && bakT > 8.3)) tegnGutt();   // skjul gutten når han er lastet inn
+  if (konkurranse) tegnMotstander();
+  if (bossTapT >= 0) tegnBossFans();         // fansen stormer og kaster bossen
+  if (bigAirKrasj) tegnMedics();             // ambulansearbeiderne foran
+
+  ctx.restore();
+
+  // fade ut triksteksten
+  if (trikstimer > 0){
+    trikstimer -= dt;
+    if (trikstimer <= 0) document.getElementById('trikstekst').classList.remove('vis');
+  }
+
+  requestAnimationFrame(løkke);
+}
+
+// ---- Start ----
+document.getElementById('startknapp').addEventListener('click', ()=>{
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('sideknapper').classList.remove('hidden');
+  document.getElementById('bigairknapp').classList.remove('hidden');  // BIG AIR i vanlig modus
+  spiller = true;
+  gutt.vy = -8; // lite hopp for å komme i gang
+  lerret.focus();
+});
+
+// ---- Bane-velger (kjøp/velg baner med penger) ----
+document.getElementById('baneknapp').addEventListener('click', ()=>{
+  visBaneliste();
+  document.getElementById('banevelger').classList.remove('hidden');
+});
+document.getElementById('bane_lukk').addEventListener('click', ()=>{
+  document.getElementById('banevelger').classList.add('hidden'); lerret.focus();
+});
+
+function visBaneliste(){
+  document.getElementById('bane_penger').textContent = adminAlt ? '♾️' : penger;
+  const liste = document.getElementById('baneliste');
+  liste.innerHTML = '';
+  BANER.forEach((b, i)=>{
+    if (b.hemmelig && !hemmeligLaastOpp) return;   // skjult til den er låst opp
+    if (b.aronheaven && !aronHeavenLaastOpp) return;
+    if (b.rom && !romLaastOpp) return;             // Verdensrommet: kun etter 18 000 m-hopp
+    const kort = document.createElement('div'); kort.className = 'bkort';
+    let knapp, pris;
+    if (b.eid){
+      pris = 'Eid' + (b.egen ? ' ✏️' : '');
+      knapp = '<button class="' + (i===baneIndex?'eid-knapp':'kjop-knapp') + '" data-velg="'+i+'">' + (i===baneIndex?'✓ Valgt':'Velg') + '</button>';
+    } else if (penger >= b.pris){
+      pris = b.pris + ' 💰';
+      knapp = '<button class="kjop-knapp" data-kjop="'+i+'">Kjøp</button>';
+    } else {
+      pris = b.pris + ' 💰';
+      knapp = '<button class="laast-knapp" disabled>🔒 mangler</button>';
+    }
+    kort.innerHTML = '<div class="bnavn">'+b.navn+'</div><div class="bpris">'+pris+'</div>'+knapp;
+    liste.appendChild(kort);
+  });
+  liste.querySelectorAll('[data-velg]').forEach(el=> el.addEventListener('click', ()=> velgBane(+el.dataset.velg)));
+  liste.querySelectorAll('[data-kjop]').forEach(el=> el.addEventListener('click', ()=> kjopBane(+el.dataset.kjop)));
+}
+function velgBane(i){
+  baneIndex = i;
+  document.getElementById('baneknapp').textContent = '🔄 Bane: ' + BANER[i].navn;
+  document.getElementById('banevelger').classList.add('hidden');
+  oppdaterRedigerKnapp();
+  lerret.focus();
+}
+function kjopBane(i){
+  if (penger >= BANER[i].pris){ penger -= BANER[i].pris; BANER[i].eid = true; oppdaterHud(); visBaneliste(); }
+}
+function oppdaterRedigerKnapp(){
+  document.getElementById('redigerknapp').classList.toggle('hidden', !redigerbar());
+}
+
+// ---- Shop (ting til Egen bane) ----
+document.getElementById('redigerknapp').addEventListener('click', ()=>{
+  visShop();
+  document.getElementById('shop').classList.remove('hidden');
+});
+document.getElementById('shop_lukk').addEventListener('click', ()=>{
+  document.getElementById('shop').classList.add('hidden'); lerret.focus();
+});
+function visShop(){
+  document.getElementById('shop_penger').textContent = penger;
+  const liste = document.getElementById('shopliste'); liste.innerHTML = '';
+  SHOP.forEach((s, i)=>{
+    const kort = document.createElement('div'); kort.className = 'bkort';
+    const kan = penger >= s.pris;
+    kort.innerHTML = '<div class="bnavn">'+s.navn+'</div><div class="bpris">'+s.pris+' 💰</div>' +
+      '<button class="'+(kan?'kjop-knapp':'laast-knapp')+'" '+(kan?'':'disabled')+' data-kjop="'+i+'">'+(kan?'Kjøp':'🔒 for dyrt')+'</button>';
+    liste.appendChild(kort);
+  });
+  liste.querySelectorAll('[data-kjop]').forEach(el=> el.addEventListener('click', ()=> kjopTing(+el.dataset.kjop)));
+}
+function kjopTing(i){
+  const s = SHOP[i];
+  if (penger >= s.pris){
+    penger -= s.pris;
+    const arr = tingArr();
+    const x = Math.min(B-60, 120 + (arr.length % 6) * 110);   // spredd utover (dra for å flytte)
+    const y = (s.type === 'fly') ? MAT_Y - 12*SKALA : MAT_Y + 70;   // flyet starter i lufta
+    arr.push({ type: s.type, x, y });
+    oppdaterHud(); visShop();
+    visTrikstekst('Kjøpt! Dra ' + s.navn + ' dit du vil 👉', '#7CFC9B');
+  }
+}
+
+// ---- Restart ----
+document.getElementById('restartknapp').addEventListener('click', ()=>{
+  document.getElementById('restartbekreft').classList.remove('hidden');
+});
+document.getElementById('restart_ja').addEventListener('click', ()=> restartSpill());
+
+function restartSpill(){
+  // poeng / penger / rekorder
+  stjerner = 0; nivo = 1; besteTriks = '–'; maksHoyde = 0; spiller = false;
+  rekordKombo = 0; antallTriks = 0; framgang = 0; rekordStjerner = 0; penger = 0; kameraZoom = 1;
+  // baner og ting
+  baneIndex = 0; baneTing = {}; dragTing = null; hemmeligLaastOpp = false; aronHeavenLaastOpp = false; romLaastOpp = false;
+  eideMerch = {}; paaMerch = null;
+  bossFight = false; bossTapT = -1; bossSnakk = false; ekstraLaast = false; aronBetalt = false; adminAlt = false;
+  BANER.forEach((b, i)=> b.eid = (i === 0));      // bare Hagen eid
+  TRIKS.forEach(t => t.gjort = false);
+  // konkurranse
+  konkurranse = false; kombo = 0; maksKombo = 0; feil = 0; konkStjerner = 0; konkTid = 30; spillerUte = false;
+  vansk = VANSKELIGHETER.medium; vinnstreak = 0; friLekNivo = 1;
+  // big air
+  bigAirAktiv = false; bigAirTeller = 0; bigAirFlyr = false; bigAirKrasj = false; bakT = 0; bigAirToppM = 0;
+  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null;
+  // spinn / verden
+  langsomStart = false; spinnHoldT = 0; tramX = B/2; tramW = 230; oppW = 150; nedtrykk = 0;
+  gutt.x = B/2; gutt.y = MAT_Y; gutt.vy = 0; gutt.vinkel = 0; gutt.spinn = 0;
+  gutt.paaMat = true; gutt.varILufta = false; gutt.vinkelVedStart = 0; gutt.krasjet = 0; gutt.tuck = 0;
+  oppGutt.stjerner = 0; oppGutt.kombo = 0; oppGutt.feil = 0; oppGutt.ute = false; oppGutt.y = MAT_Y; oppGutt.vy = 0; oppGutt.vinkel = 0;
+  // UI tilbake til startskjermen
+  ['restartbekreft','sideknapper','bigairknapp','konkhud','banevelger','shop','leaderboard','nivaaboard','onlineboard','rankshop','vanskeligheter','resultat','redigerknapp']
+    .forEach(id => document.getElementById(id).classList.add('hidden'));
+  document.getElementById('overlay').classList.remove('hidden');
+  document.getElementById('baneknapp').textContent = '🔄 Bane: Hagen';
+  document.getElementById('startfartknapp').textContent = '⚡ Startfart: AV';
+  oppdaterHud();
+}
+document.getElementById('restart_nei').addEventListener('click', ()=>{
+  document.getElementById('restartbekreft').classList.add('hidden'); lerret.focus();
+});
+
+// ---- Dra-og-slipp av ting (på redigerbare baner) ----
+function canvasPos(e){
+  const r = lerret.getBoundingClientRect();
+  const cx = (e.touches ? e.touches[0].clientX : e.clientX);
+  return (cx - r.left) * (lerret.width / r.width);
+}
+function canvasPosY(e){
+  const r = lerret.getBoundingClientRect();
+  const cy = (e.touches ? e.touches[0].clientY : e.clientY);
+  return (cy - r.top) * (lerret.height / r.height);
+}
+function startDrag(e){
+  if (!redigerbar()) return;
+  const x = canvasPos(e), y = canvasPosY(e);
+  let best = null, bestD = 90;
+  for (const t of tingArr()){ const d = Math.hypot(t.x - x, (t.y || MAT_Y+50) - y); if (d < bestD){ bestD = d; best = t; } }
+  if (best){ dragTing = best; e.preventDefault(); }
+}
+function flyttDrag(e){
+  if (!dragTing) return;
+  dragTing.x = Math.max(40, Math.min(B-40, canvasPos(e)));
+  if (dragTing.type === 'fly') dragTing.y = Math.max(60, Math.min(MAT_Y+40, canvasPosY(e)));  // flyet kan flyttes i høyden
+  e.preventDefault();
+}
+function sluttDrag(){ dragTing = null; }
+lerret.addEventListener('mousedown', startDrag);
+addEventListener('mousemove', flyttDrag);
+addEventListener('mouseup', sluttDrag);
+lerret.addEventListener('touchstart', startDrag, {passive:false});
+addEventListener('touchmove', flyttDrag, {passive:false});
+addEventListener('touchend', sluttDrag);
+// dobbeltklikk for å slette en plassert ting
+lerret.addEventListener('dblclick', e=>{
+  if (!redigerbar()) return;
+  const x = canvasPos(e), y = canvasPosY(e), arr = tingArr();
+  let bestI = -1, bestD = 90;
+  for (let i = 0; i < arr.length; i++){ const d = Math.hypot(arr[i].x - x, (arr[i].y || MAT_Y+50) - y); if (d < bestD){ bestD = d; bestI = i; } }
+  if (bestI >= 0){ arr.splice(bestI, 1); visTrikstekst('🗑️ Slettet', '#ff5c5c'); }
+});
+
+// Tegner tingene du har plassert (bak trampolinen)
+function tegnPlasserteTing(){
+  for (const t of tingArr()) tegnTing(t.type, t.x, t.y);
+  if (!konkurranse){
+    ctx.fillStyle = 'rgba(27,42,68,.55)'; ctx.font = 'bold 15px "Trebuchet MS", sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('✏️ Dra ting for å flytte · dobbeltklikk for å slette', B/2, 150);
+    ctx.textAlign = 'left';
+  }
+}
+function tegnTing(type, x, y){
+  if (type === 'fly'){
+    // fint fly – tegnes der du plasserte det (fritt i lufta)
+    const fy = (y == null) ? MAT_Y - 12*SKALA : y;
+    ctx.save(); ctx.translate(x, fy);
+    // vinger
+    ctx.fillStyle = '#c9d3e0';
+    ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(-44,16); ctx.lineTo(-6,8); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(-6,0); ctx.lineTo(-44,-16); ctx.lineTo(-6,-8); ctx.closePath(); ctx.fill();
+    // kropp
+    ctx.fillStyle = '#eef2f7';
+    ctx.beginPath(); ctx.ellipse(0,0,46,13,0,0,Math.PI*2); ctx.fill();
+    // hale
+    ctx.fillStyle = '#c9d3e0';
+    ctx.beginPath(); ctx.moveTo(40,-3); ctx.lineTo(52,-18); ctx.lineTo(44,-3); ctx.closePath(); ctx.fill();
+    // nese
+    ctx.fillStyle = '#ff5c5c'; ctx.beginPath(); ctx.arc(-44,0,7,0,Math.PI*2); ctx.fill();
+    // vinduer
+    ctx.fillStyle = '#49b6ff';
+    for (let i=-2;i<=3;i++){ ctx.beginPath(); ctx.arc(i*11, -2, 3, 0, Math.PI*2); ctx.fill(); }
+    ctx.restore();
+    return;
+  }
+  if (type === 'skyskraper'){
+    const w = 86, gY = MAT_Y + 70, h = 300;
+    ctx.fillStyle = '#5b6b8c'; ctx.fillRect(x - w/2, gY - h, w, h);
+    ctx.fillStyle = '#2f3c57'; ctx.fillRect(x - w/2 - 4, gY - h - 8, w + 8, 10);
+    ctx.fillStyle = 'rgba(255,240,170,.7)';
+    for (let wy = gY - h + 16; wy < gY - 14; wy += 24)
+      for (let wx = x - w/2 + 11; wx < x + w/2 - 12; wx += 20) ctx.fillRect(wx, wy, 9, 13);
+  } else if (type === 'redbull'){
+    tegnBooth(x, '#001489', 'Red Bull', '#ffd400', '#001489');
+  } else if (type === 'monster'){
+    tegnBooth(x, '#0a0a0a', 'MONSTER', '#9bff00', '#0a0a0a');
+  } else if (type === 'stadion'){
+    // tribune/stadion-plass (som på Byfesten) – tomme seter
+    const gY = MAT_Y + 70, w = 150, h = 80, top = gY - h;
+    ctx.fillStyle = '#8392aa'; ctx.fillRect(x - w/2, top, w, h);
+    ctx.fillStyle = '#6b7a93'; ctx.fillRect(x - w/2, top, w, 6);
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    for (let rad = 0; rad < 3; rad++)
+      for (let s = 0; s < 6; s++) ctx.fillRect(x - w/2 + 8 + s*23, top + 12 + rad*23, 18, 14);
+  } else if (type === 'person'){
+    // en tilskuer du har kjøpt
+    const gY = MAT_Y + 70;
+    const farger = ['#ff6b6b','#ffd34e','#4ecdc4','#9b5de5','#f15bb5','#00bbf9'];
+    ctx.fillStyle = farger[Math.abs(Math.round(x/37)) % farger.length];
+    ctx.beginPath(); ctx.arc(x, gY - 16, 12, Math.PI, 0); ctx.fill();
+    ctx.fillRect(x - 12, gY - 16, 24, 16);
+    ctx.fillStyle = '#f4c79a';
+    ctx.beginPath(); ctx.arc(x, gY - 28, 9, 0, Math.PI*2); ctx.fill();
+  }
+}
+
+// ---- Konkurranse ----
+// Konkurranse: vis vanskelighets-velgeren først
+document.getElementById('konkknapp').addEventListener('click', ()=>{
+  document.getElementById('streakvis').textContent = vinnstreak;
+  document.getElementById('vanskeligheter').classList.remove('hidden');
+});
+document.querySelectorAll('.vknapp').forEach(b => b.addEventListener('click', ()=>{
+  startKonkurranse(b.dataset.diff); lerret.focus();
+}));
+document.getElementById('vlukk').addEventListener('click', ()=>{
+  document.getElementById('vanskeligheter').classList.add('hidden');
+});
+
+// Leaderboard (beste big air)
+document.getElementById('leaderboardknapp').addEventListener('click', ()=>{
+  visLeaderboard();
+  document.getElementById('leaderboard').classList.remove('hidden');
+});
+document.getElementById('lb_lukk').addEventListener('click', ()=>{
+  document.getElementById('leaderboard').classList.add('hidden'); lerret.focus();
+});
+// Nivå-toppliste
+document.getElementById('nivaaknapp').addEventListener('click', ()=>{
+  visNivaaboard();
+  document.getElementById('nivaaboard').classList.remove('hidden');
+});
+document.getElementById('nb_lukk').addEventListener('click', ()=>{
+  document.getElementById('nivaaboard').classList.add('hidden'); lerret.focus();
+});
+// Admin: online-oversikt over alle spillere
+document.getElementById('onlineknapp').addEventListener('click', ()=>{
+  visOnlineboard();
+  document.getElementById('leaderboard').classList.add('hidden');
+  document.getElementById('onlineboard').classList.remove('hidden');
+});
+document.getElementById('online_lukk').addEventListener('click', ()=>{
+  document.getElementById('onlineboard').classList.add('hidden'); lerret.focus();
+});
+function visOnlineboard(){
+  const alle = SPILLERE.concat([{ navn:spillerNavn, online:true, penger, lvl:nivo, deg:true }]);
+  const liste = document.getElementById('onlineliste'); liste.innerHTML = '';
+  for (const grp of [{ t:'🟢 Online', folk:alle.filter(p=>p.online) }, { t:'⚪ Offline', folk:alle.filter(p=>!p.online) }]){
+    const h = document.createElement('div'); h.className = 'onlinehdr';
+    h.textContent = grp.t + ' (' + grp.folk.length + ')'; liste.appendChild(h);
+    grp.folk.sort((a,b)=> b.lvl - a.lvl);
+    for (const p of grp.folk){
+      const rad = document.createElement('div'); rad.className = 'lbrad' + (p.deg ? ' lbdeg' : '');
+      rad.innerHTML = '<span>'+p.navn+'</span><span>💰 '+p.penger+' · Nivå '+p.lvl+'</span>';
+      liste.appendChild(rad);
+    }
+  }
+}
+function visNivaaboard(){
+  const alle = NIVAA_TOPP.concat([{ navn:spillerNavn, lvl:nivo, deg:true }]);
+  alle.sort((a,b)=> b.lvl - a.lvl);
+  const liste = document.getElementById('nbliste'); liste.innerHTML = '';
+  alle.forEach((e,i)=>{
+    const rad = document.createElement('div');
+    rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
+    const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>Nivå '+e.lvl+'</span>';
+    liste.appendChild(rad);
+  });
+}
+
+// ---- Rank-shop ----
+document.getElementById('rankshopknapp').addEventListener('click', ()=>{
+  visRankshop();
+  document.getElementById('rankshop').classList.remove('hidden');
+});
+document.getElementById('rank_lukk').addEventListener('click', ()=>{
+  document.getElementById('rankshop').classList.add('hidden'); lerret.focus();
+});
+function visRankshop(){
+  document.getElementById('rank_penger').textContent = adminAlt ? '♾️' : penger;
+  const liste = document.getElementById('rankliste'); liste.innerHTML = '';
+  const secret = !ekstraLaast && spillerNavn.trim().toLowerCase() === 'secret shop';
+  RANKS.forEach((r, i)=>{
+    if (r.hemmelig && !secret) return;              // The godly Aron bare i secret shop
+    const kort = document.createElement('div'); kort.className = 'bkort';
+    const multTxt = (r.mult < 1) ? '½× (halvparten!)' : (r.mult + '× 💰⭐');
+    let knapp;
+    if (rank === r) knapp = '<button class="eid-knapp" disabled>✓ Har den</button>';
+    else if (penger >= r.pris) knapp = '<button class="kjop-knapp" data-rank="'+i+'">Kjøp</button>';
+    else knapp = '<button class="laast-knapp" disabled>🔒 mangler</button>';
+    kort.innerHTML = '<div class="bnavn">'+r.navn+'</div><div class="bpris">'+multTxt+' · '+r.pris+' 💰</div>'+knapp;
+    liste.appendChild(kort);
+  });
+  liste.querySelectorAll('[data-rank]').forEach(el=> el.addEventListener('click', ()=> kjopRank(+el.dataset.rank)));
+  renderMerch();
+}
+function renderMerch(){
+  const liste = document.getElementById('merchliste'); liste.innerHTML = '';
+  MERCH.forEach((m, i)=>{
+    const kort = document.createElement('div'); kort.className = 'bkort';
+    let knapp;
+    if (!eideMerch[m.type]){
+      knapp = (penger >= m.pris)
+        ? '<button class="kjop-knapp" data-kjopmerch="'+i+'">Kjøp</button>'
+        : '<button class="laast-knapp" disabled>🔒 mangler</button>';
+    } else if (paaMerch === m){
+      knapp = '<button class="eid-knapp" data-merch="'+i+'">✓ På (ta av)</button>';
+    } else {
+      knapp = '<button class="kjop-knapp" data-merch="'+i+'">Ta på</button>';
+    }
+    kort.innerHTML = '<div class="bnavn">'+m.navn+'</div><div class="bpris">👕 '+m.pris+' 💰</div>'+knapp;
+    liste.appendChild(kort);
+  });
+  liste.querySelectorAll('[data-kjopmerch]').forEach(el=> el.addEventListener('click', ()=> kjopMerch(+el.dataset.kjopmerch)));
+  liste.querySelectorAll('[data-merch]').forEach(el=> el.addEventListener('click', ()=> taPaaMerch(+el.dataset.merch)));
+}
+function kjopRank(i){
+  const r = RANKS[i];
+  if (penger >= r.pris && rank !== r){
+    penger -= r.pris; rank = r;
+    oppdaterHud(); sjekkAronHeaven(); visRankshop();
+    visTrikstekst('🎖️ Ny rank: ' + r.navn + '  (' + r.mult + '×)', '#ffd34e');
+  }
+}
+function kjopMerch(i){
+  const m = MERCH[i];
+  if (!eideMerch[m.type] && penger >= m.pris){
+    penger -= m.pris; eideMerch[m.type] = true;
+    oppdaterHud(); sjekkAronHeaven(); visRankshop();
+    visTrikstekst('Kjøpt ' + m.navn + '! Trykk «Ta på» 👕', '#7CFC9B');
+  }
+}
+// Aron Heaven låses opp når du har topp-ranken OG den dyreste merchen
+function sjekkAronHeaven(){
+  if (rank && rank.hemmelig && eideMerch['aron'] && !aronHeavenLaastOpp){
+    aronHeavenLaastOpp = true;
+    BANER[AH].eid = true;
+    visTrikstekst('☁️👑 Aron Heaven låst opp!', '#ffd34e');
+  }
+}
+function taPaaMerch(i){
+  const m = MERCH[i];
+  if (!eideMerch[m.type]) return;
+  if (paaMerch === m){ paaMerch = null; }
+  else { paaMerch = m; if (m.aura) visTrikstekst('+ INFINITY AURA / RIZZ 🔥😎', '#ffd34e', 7); }
+  sjekkAronHeaven();
+  visRankshop();
+}
+// endre navn (skriv "admin" for å låse opp code-knappen)
+document.getElementById('navninput').addEventListener('input', e=>{
+  spillerNavn = e.target.value.trim() || 'Hopperen';
+  document.getElementById('spillernavn').textContent = spillerNavn;   // oppdater info-baren
+  renderLbListe();
+  oppdaterAdminSeksjon();
+});
+// bytter du til et navn som IKKE er et ekstra-navn -> mister du ekstra-navnene
+document.getElementById('navninput').addEventListener('blur', ()=>{
+  const n = spillerNavn.trim().toLowerCase();
+  const spesielle = ['aron','admin','abdullah','secret shop','hopperen'];
+  // Å hete "Aron" koster 100 000 kr (engangskjøp)
+  if (n === 'aron' && !aronBetalt){
+    if (penger >= 100000){
+      penger -= 100000; aronBetalt = true; ekstraLaast = false;
+      oppdaterHud(); oppdaterAdminSeksjon();
+      visTrikstekst('💰 Du betalte 100 000 kr for å hete Aron! 👑', '#ffd34e', 4);
+    } else {
+      ekstraLaast = true; oppdaterAdminSeksjon();
+      visTrikstekst('Aron koster 100 000 kr – du har ikke nok penger! 😏', '#ff5c5c', 4);
+    }
+    return;
+  }
+  if (!ekstraLaast && n && !spesielle.includes(n)){
+    ekstraLaast = true;
+    oppdaterAdminSeksjon();
+    visTrikstekst('Visste det – du er ikke Aron! Ingen ekstra-navn for deg nå. 😏', '#ff5c5c', 4);
+  }
+});
+// admin: code-knapp viser et kodefelt
+document.getElementById('codeknapp').addEventListener('click', ()=>{
+  document.getElementById('codeinput').classList.toggle('hidden');
+});
+// skriv "admin adgang" for å låse opp penge-knappene
+document.getElementById('codeinput').addEventListener('input', e=>{
+  if (ekstraLaast) return;
+  const navn = spillerNavn.trim().toLowerCase();
+  const kode = e.target.value.trim().toLowerCase();
+  // admin: penge-knapper
+  document.getElementById('pengeknapper').classList.toggle('hidden', !(navn === 'admin' && kode === 'admin adgang'));
+  // abdullah: lås opp hemmelig bane med "twins"
+  if (navn === 'abdullah' && kode === 'twins' && !hemmeligLaastOpp){
+    hemmeligLaastOpp = true;
+    BANER[HEMMELIG].eid = true;
+    renderLbListe();
+    visTrikstekst('🔓 Hemmelig bane låst opp! 🏙️', '#ffd34e');
+  }
+  // admin: skriv "aron" -> GOD MODE: alle baner + alle shops + all merch + evig penger
+  if (navn === 'admin' && kode === 'aron' && !adminAlt){
+    adminAlt = true;
+    BANER.forEach(b => b.eid = true);                 // alle baner åpne
+    hemmeligLaastOpp = true; aronHeavenLaastOpp = true;
+    MERCH.forEach(m => { eideMerch[m.type] = true; }); // all merch (shops åpne)
+    penger = 1e9;                                      // evig penger
+    oppdaterHud(); visBaneliste();
+    if (!document.getElementById('rankshop').classList.contains('hidden')) visRankshop();
+    visTrikstekst('👑♾️ ADMIN GOD MODE: alt åpent + evig penger!', '#ffd34e', 5);
+  }
+});
+document.querySelectorAll('#pengeknapper button').forEach(b => b.addEventListener('click', ()=>{
+  penger += parseInt(b.dataset.ppenger, 10);
+  oppdaterHud();
+  visTrikstekst('💰 +' + b.dataset.ppenger + ' (admin)', '#ffd34e');
+}));
+function visLeaderboard(){
+  document.getElementById('navninput').value = spillerNavn;
+  renderLbListe();
+  oppdaterAdminSeksjon();
+}
+function renderLbListe(){
+  const alle = LEADERBOARD.concat([{ navn:spillerNavn, g:bigAirRekord, deg:true }]);
+  alle.sort((a,b)=> b.g - a.g);
+  const liste = document.getElementById('lbliste'); liste.innerHTML = '';
+  alle.forEach((e,i)=>{
+    const rad = document.createElement('div');
+    rad.className = 'lbrad' + (e.deg ? ' lbdeg' : '');
+    const rang = ['🥇','🥈','🥉'][i] || (i+1) + '.';
+    rad.innerHTML = '<span>'+rang+' '+e.navn+'</span><span>'+e.g+'°</span>';
+    liste.appendChild(rad);
+  });
+}
+function oppdaterAdminSeksjon(){
+  const navn = spillerNavn.trim().toLowerCase();
+  const harKode = !ekstraLaast && (navn === 'admin' || navn === 'abdullah');
+  document.getElementById('adminseksjon').classList.toggle('hidden', !harKode);
+  document.getElementById('onlineknapp').classList.toggle('hidden', ekstraLaast || navn !== 'admin');   // online-oversikt kun for admin
+  if (!harKode){   // skjul kode-ting når man ikke har tilgang
+    document.getElementById('codeinput').classList.add('hidden');
+    document.getElementById('pengeknapper').classList.add('hidden');
+  }
+}
+
+// Startfart: bytt mellom vanlig spinn og "start sakte → enorm fart"
+document.getElementById('startfartknapp').addEventListener('click', ()=>{
+  langsomStart = !langsomStart;
+  document.getElementById('startfartknapp').textContent = '⚡ Startfart: ' + (langsomStart ? 'PÅ' : 'AV');
+  lerret.focus();
+});
+document.getElementById('bigairknapp').addEventListener('click', ()=>{
+  if (!konkurranse && !bigAirAktiv && spiller){
+    bigAirAktiv = true; bigAirTeller = 0;
+    document.getElementById('bigairknapp').disabled = true;
+    visTrikstekst('🚀 BIG AIR! Hjelperne lader opp...', '#49b6ff');
+  }
+  lerret.focus();
+});
+document.getElementById('avsluttknapp').addEventListener('click', ()=>{ avsluttKonkurranse(); lerret.focus(); });
+document.getElementById('proigjen').addEventListener('click', ()=>{ startKonkurranse(); lerret.focus(); });
+document.getElementById('tilbakeknapp').addEventListener('click', ()=>{ avsluttKonkurranse(); lerret.focus(); });
+
+// Tegner hopperens hode i info-baren (lite portrett)
+function tegnAvatar(){
+  const a = document.getElementById('avatar');
+  if (!a) return;
+  const x = a.getContext('2d');
+  x.clearRect(0,0,58,58);
+  x.fillStyle = '#cdeaff'; x.beginPath(); x.arc(29,29,29,0,Math.PI*2); x.fill();
+  // hode
+  x.fillStyle = '#f4c79a'; x.beginPath(); x.arc(29,32,17,0,Math.PI*2); x.fill();
+  // gul caps
+  x.fillStyle = '#ffcf33'; x.beginPath(); x.arc(29,30,17, Math.PI*1.0, Math.PI*2.0); x.fill();
+  x.fillRect(12,16,34,7);
+  x.fillRect(4,16,12,5);   // brem framover
+  // øyne
+  x.fillStyle = '#222';
+  x.beginPath(); x.arc(23,33,2.3,0,Math.PI*2); x.fill();
+  x.beginPath(); x.arc(35,33,2.3,0,Math.PI*2); x.fill();
+  // smil
+  x.strokeStyle = '#222'; x.lineWidth = 2;
+  x.beginPath(); x.arc(29,37,6,0.1*Math.PI,0.9*Math.PI); x.stroke();
+}
+
+tegnAvatar();
+oppdaterHud();
+requestAnimationFrame(løkke);
+</script>
+</body>
+</html>
