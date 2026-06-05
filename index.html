@@ -224,9 +224,14 @@
   /* Samlet leaderboard har mange lister -> scroll fra toppen i stedet for sentrert */
   #leaderboard { justify-content: flex-start; padding-top: 28px; }
   #leaderboard h2, #nivaaboard h2, #onlineboard h2, #pengeboard h2 { font-size: 30px; margin: 0 0 4px; }
-  #lbliste, #lbliste_dag, #nbliste, #onlineliste, #pengeliste, #komboliste { width: 360px; max-width: 88%; margin-top: 6px; max-height: 200px; overflow-y: auto; }
+  #lbliste, #lbliste_dag, #nbliste, #onlineliste, #pengeliste, #komboliste { width: 360px; max-width: 88%; margin-top: 6px; max-height: 230px; overflow-y: auto; }
   .lbtittel { margin-top: 14px; font-weight: bold; color: #ffd34e; }
   .lbtittel small { font-weight: normal; opacity: .8; }
+  /* Faner for å velge toppliste */
+  .lbtabs { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0 4px; width: 360px; max-width: 88%; }
+  .lbtab { font-size: 14px; padding: 7px 13px; border: none; border-radius: 99px; background: #3a4a63; color: #fff; cursor: pointer; }
+  .lbtab.aktiv { background: #ffd34e; color: #1b2a44; font-weight: bold; }
+  .lbseksjon { display: flex; flex-direction: column; align-items: center; width: 100%; }
   .onlinehdr { color: #ffd34e; font-weight: bold; font-size: 15px; text-align: left; margin: 10px 4px 4px; }
   .lbrad {
     display: flex; justify-content: space-between; background: rgba(255,255,255,.92); color: #1b2a44;
@@ -526,17 +531,31 @@
 
     <div id="leaderboard" class="hidden">
       <h2>🏆 Leaderboards</h2>
-      <div class="vstreak">🌐 Alle topplistene – online!</div>
-      <div class="vstreak lbtittel">☀️ Big Air – Dagens <small>(nullstilles ved norsk midnatt)</small></div>
-      <div id="lbliste_dag"></div>
-      <div class="vstreak lbtittel">🏅 Big Air – Gjennom tidene</div>
-      <div id="lbliste"></div>
-      <div class="vstreak lbtittel">📊 Høyest nivå</div>
-      <div id="nbliste"></div>
-      <div class="vstreak lbtittel">💰 Rikeste spillere</div>
-      <div id="pengeliste"></div>
-      <div class="vstreak lbtittel">🔥 Lengste kombo</div>
-      <div id="komboliste"></div>
+      <div class="vstreak">🌐 Velg toppliste:</div>
+      <div class="lbtabs">
+        <button class="lbtab aktiv" data-tab="bigair">🏅 Big Air</button>
+        <button class="lbtab" data-tab="nivaa">📊 Nivå</button>
+        <button class="lbtab" data-tab="penge">💰 Penger</button>
+        <button class="lbtab" data-tab="kombo">🔥 Kombo</button>
+      </div>
+      <div class="lbseksjon" data-sek="bigair">
+        <div class="lbtittel">☀️ Dagens <small>(nullstilles ved norsk midnatt)</small></div>
+        <div id="lbliste_dag"></div>
+        <div class="lbtittel">🏆 Gjennom tidene</div>
+        <div id="lbliste"></div>
+      </div>
+      <div class="lbseksjon hidden" data-sek="nivaa">
+        <div class="lbtittel">📊 Høyest nivå</div>
+        <div id="nbliste"></div>
+      </div>
+      <div class="lbseksjon hidden" data-sek="penge">
+        <div class="lbtittel">💰 Rikeste spillere</div>
+        <div id="pengeliste"></div>
+      </div>
+      <div class="lbseksjon hidden" data-sek="kombo">
+        <div class="lbtittel">🔥 Lengste kombo</div>
+        <div id="komboliste"></div>
+      </div>
       <div class="navnrad">Ditt navn: <input id="navninput" maxlength="14" /></div>
       <div id="adminseksjon" class="hidden">
         <button id="codeknapp">code:</button>
@@ -802,8 +821,11 @@ const RANKS = [
   { navn:'Follower of the high and migthy Aron', mult:5,   pris:5000 },
   { navn:'The godly Aron',                       mult:10,  pris:15000, hemmelig:true },
 ];
-let rank = null;                              // din nåværende rank (null = ingen)
+let rank = null;                              // ranken du har I BRUK nå (null = ingen)
+let eideRanks = {};                           // ranks du har KJØPT (index -> true). Eide ranks kan alltid tas i bruk igjen.
 function rankMult(){ return rank ? rank.mult : 1; }   // rank-multiplikator gjelder (også i boss-kamp)
+// Neste rank du kan kjøpe = laveste du ennå ikke eier (du må kjøpe deg oppover i rekkefølge)
+function nesteRankIndex(){ for (let i = 0; i < RANKS.length; i++){ if (!eideRanks[i]) return i; } return -1; }
 
 // Merch du kan kjøpe og ha på (endrer genseren til gutten)
 const MERCH = [
@@ -827,8 +849,8 @@ const SPILLERE = [                            // admin-oversikt (eksempel-data)
 // Vanskelighetsgrader for konkurransen (motstanderens styrke + premie ved seier)
 const VANSKELIGHETER = {
   enkelt:    { navn:'Enkelt',    landP:0.35, premie:50,  odds:{1:0.55, 2:0.35, 3:0.09, 4:0.01} },
-  medium:    { navn:'Medium',    landP:0.50, premie:100, odds:{1:0.30, 2:0.45, 3:0.18, 4:0.07} },
-  vanskelig: { navn:'Vanskelig', landP:0.68, premie:300, odds:{1:0.12, 2:0.38, 3:0.35, 4:0.15} },
+  medium:    { navn:'Medium',    landP:0.75, premie:100, odds:{1:0.30, 2:0.45, 3:0.18, 4:0.07} },   // lander 3 av 4 ganger
+  vanskelig: { navn:'Vanskelig', landP:1,    premie:300, odds:{1:0.12, 2:0.38, 3:0.35, 4:0.15} },   // lander alltid
 };
 let vansk = VANSKELIGHETER.medium;
 let vinnstreak = 0;          // antall seire på rad (+50% premie for hver)
@@ -2395,7 +2417,7 @@ function restartSpill(){
   vansk = VANSKELIGHETER.medium; vinnstreak = 0; friLekNivo = 1;
   // big air
   bigAirAktiv = false; bigAirTeller = 0; bigAirFlyr = false; bigAirKrasj = false; bakT = 0; bigAirToppM = 0;
-  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null; pengerTopp = 0; komboSendt = 0;
+  bigAirRekord = 0; leaderboardSlatt = false; spillerNavn = 'Hopperen'; bakVinner = 0; rank = null; eideRanks = {}; pengerTopp = 0; komboSendt = 0;
   // spinn / verden
   langsomStart = false; spinnHoldT = 0; tramX = B/2; tramW = 230; oppW = 150; nedtrykk = 0;
   gutt.x = B/2; gutt.y = MAT_Y; gutt.vy = 0; gutt.vinkel = 0; gutt.spinn = 0;
@@ -2600,6 +2622,12 @@ document.getElementById('leaderboardknapp').addEventListener('click', ()=>{
 document.getElementById('lb_lukk').addEventListener('click', ()=>{
   document.getElementById('leaderboard').classList.add('hidden'); lerret.focus();
 });
+// Faner: velg hvilken toppliste som vises
+function velgLbFane(tab){
+  document.querySelectorAll('.lbtab').forEach(b => b.classList.toggle('aktiv', b.dataset.tab === tab));
+  document.querySelectorAll('.lbseksjon').forEach(s => s.classList.toggle('hidden', s.dataset.sek !== tab));
+}
+document.querySelectorAll('.lbtab').forEach(b => b.addEventListener('click', ()=> velgLbFane(b.dataset.tab)));
 // Admin: online-oversikt over alle spillere
 document.getElementById('onlineknapp').addEventListener('click', ()=>{
   visOnlineboard();
@@ -2772,18 +2800,32 @@ function visRankshop(){
   document.getElementById('rank_penger').textContent = adminAlt ? '♾️' : penger;
   const liste = document.getElementById('rankliste'); liste.innerHTML = '';
   const secret = !ekstraLaast && spillerNavn.trim().toLowerCase() === 'secret shop';
+  const neste = nesteRankIndex();
   RANKS.forEach((r, i)=>{
-    if (r.hemmelig && !secret) return;              // The godly Aron bare i secret shop
+    const eid = !!eideRanks[i];
+    if (r.hemmelig && !secret && !eid) return;      // The godly Aron: skjult til secret shop – men alltid synlig når du eier den
     const kort = document.createElement('div'); kort.className = 'bkort';
     const multTxt = (r.mult < 1) ? '½× (halvparten!)' : (r.mult + '× 💰⭐');
     let knapp;
-    if (rank === r) knapp = '<button class="eid-knapp" disabled>✓ Har den</button>';
-    else if (penger >= r.pris) knapp = '<button class="kjop-knapp" data-rank="'+i+'">Kjøp</button>';
-    else knapp = '<button class="laast-knapp" disabled>🔒 mangler</button>';
+    if (eid){
+      // Eid rank kan alltid tas i bruk igjen
+      knapp = (rank === r)
+        ? '<button class="eid-knapp" disabled>✓ I bruk</button>'
+        : '<button class="kjop-knapp" data-brukrank="'+i+'">Bruk</button>';
+    } else if (i === neste){
+      // Neste i rekka – kan kjøpes hvis du har råd
+      knapp = (penger >= r.pris)
+        ? '<button class="kjop-knapp" data-rank="'+i+'">Kjøp</button>'
+        : '<button class="laast-knapp" disabled>🔒 mangler 💰</button>';
+    } else {
+      // Høyere rank du ikke har nådd enda – må kjøpe deg oppover først
+      knapp = '<button class="laast-knapp" disabled>🔒 kjøp lavere først</button>';
+    }
     kort.innerHTML = '<div class="bnavn">'+r.navn+'</div><div class="bpris">'+multTxt+' · '+r.pris+' 💰</div>'+knapp;
     liste.appendChild(kort);
   });
   liste.querySelectorAll('[data-rank]').forEach(el=> el.addEventListener('click', ()=> kjopRank(+el.dataset.rank)));
+  liste.querySelectorAll('[data-brukrank]').forEach(el=> el.addEventListener('click', ()=> brukRank(+el.dataset.brukrank)));
   renderMerch();
 }
 function renderMerch(){
@@ -2808,11 +2850,19 @@ function renderMerch(){
 }
 function kjopRank(i){
   const r = RANKS[i];
-  if (penger >= r.pris && rank !== r){
-    penger -= r.pris; rank = r;
+  if (i !== nesteRankIndex()) return;        // må kjøpes i rekkefølge (laveste først)
+  if (penger >= r.pris && !eideRanks[i]){
+    penger -= r.pris; eideRanks[i] = true; rank = r;   // kjøp og ta i bruk med en gang
     oppdaterHud(); sjekkAronHeaven(); visRankshop();
     visTrikstekst('🎖️ Ny rank: ' + r.navn + '  (' + r.mult + '×)', '#ffd34e');
   }
+}
+// Ta i bruk en rank du allerede eier (eide ranks er alltid tilgjengelige)
+function brukRank(i){
+  if (!eideRanks[i]) return;
+  rank = RANKS[i];
+  oppdaterHud(); sjekkAronHeaven(); visRankshop();
+  visTrikstekst('🎖️ Tok i bruk: ' + RANKS[i].navn + '  (' + RANKS[i].mult + '×)', '#ffd34e');
 }
 function kjopMerch(i){
   const m = MERCH[i];
@@ -2924,6 +2974,7 @@ async function sendScore(navn, grader){
 }
 function visLeaderboard(){
   document.getElementById('navninput').value = spillerNavn;
+  velgLbFane('bigair');        // start alltid på Big Air-fanen
   // tegn alt med en gang (rask visning), så hent ferske data fra serveren
   renderLbListe(); visNivaaboard(); visPengeboard(); visKomboboard();
   hentOnlineScores(); hentNivaa(); hentPenger(); hentKombo();
