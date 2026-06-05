@@ -1,0 +1,8 @@
+{
+  // Cloudflare Workers – statisk side (serverer index.html direkte)
+  "name": "trampolinehopp",
+  "compatibility_date": "2026-06-01",
+  "assets": {
+    "directory": "."
+  }
+}
