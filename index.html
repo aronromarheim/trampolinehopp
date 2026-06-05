@@ -800,6 +800,7 @@ const BANER = [
   { navn:'Aron Heaven', himmel:['#fff3bf','#ffd86b'], gress:'#e8c84a', gress2:'#caa72c', publikum:false, aronheaven:true, pris:0, eid:false },
   { navn:'The Final Boss', himmel:['#3a0a0a','#8a1f1f'], gress:'#2a1414', gress2:'#1a0c0c', publikum:true, boss:true, pris:10000, eid:false },
   { navn:'Verdensrommet', himmel:['#05010f','#1a0b3a'], gress:'#1a1430', gress2:'#0e0a20', publikum:false, rom:true, pris:0, eid:false },
+  { navn:'Månen', himmel:['#08080f','#23233a'], gress:'#9a9aa4', gress2:'#7b7b86', publikum:false, maane:true, pris:0, eid:false },
 ];
 let baneIndex = 0;
 const EGEN_BANE = 5;   // index til "Egen bane"
@@ -810,6 +811,8 @@ let aronHeavenLaastOpp = false;
 const BOSS = 8;                  // index til "The Final Boss"
 const ROM = 9;                   // index til "Verdensrommet" (låses opp ved 18 000 m)
 let romLaastOpp = false;         // har du nådd verdensrommet (hoppet over 18 000 m)?
+const MAANE = 10;                // index til "Månen" (låses opp ved 250 m på Aron Heaven)
+let maaneLaastOpp = false;       // har du landet på månen (250 m på Aron Heaven)?
 let bossFight = false;           // er du i en boss-kamp?
 let bossTapT = -1;               // animasjon når du taper boss (fansen kaster bossen) -1=av
 let bossSnakk = false;           // bossen sier noe (snakkeboble)
@@ -969,13 +972,15 @@ function tegnBakgrunn(){
   ctx.fillRect(-6000, -10000, B+12000, H+10000);   // ekstra stor så den dekker når kameraet zoomer langt ut
 
   // sol eller måne + stjerner
-  if (b.rom){ tegnStjernehimmel(); }
+  if (b.rom || b.maane){ tegnStjernehimmel(); }
   else if (b.natt){ tegnStjernehimmel(); tegnMaane(); }
   else { tegnSol(); }
+  // På månen: vis jordkloden i bakgrunnen
+  if (b.maane) tegnJordklode();
 
-  // skyer (ingen i verdensrommet, færre om natta)
-  if (b.rom){
-    // ingen skyer i verdensrommet
+  // skyer (ingen i verdensrommet/på månen, færre om natta)
+  if (b.rom || b.maane){
+    // ingen skyer i verdensrommet/på månen
   } else if (!b.natt){
     tegnSky(170, 90, 1);  tegnSky(420, 60, .8);  tegnSky(640, 150, 1.1);
     tegnSky(250, 320, .9); tegnSky(600, 420, 1);  tegnSky(140, 520, .8);
@@ -1189,6 +1194,25 @@ function tegnMaane(){
   ctx.beginPath(); ctx.arc(B-120, 100, 40, 0, Math.PI*2); ctx.fill();
   ctx.fillStyle = BANER[baneIndex].himmel[0];   // halvmåne ved å legge en "skygge" oppå
   ctx.beginPath(); ctx.arc(B-100, 86, 34, 0, Math.PI*2); ctx.fill();
+}
+
+// Jordkloden sett fra månen (oppe til høyre)
+function tegnJordklode(){
+  const x = 165, y = 440, r = 58;
+  ctx.save();
+  // svak glød
+  ctx.globalAlpha = .25; ctx.fillStyle = '#7ec8ff';
+  ctx.beginPath(); ctx.arc(x, y, r+10, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+  // hav
+  ctx.fillStyle = '#2a6fd6';
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.fill();
+  // kontinenter
+  ctx.fillStyle = '#43b04a';
+  ctx.beginPath(); ctx.ellipse(x-18, y-14, 20, 13, .4, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+16, y+10, 17, 20, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+22, y-22, 10, 8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
 }
 
 function tegnStjernehimmel(){
@@ -1648,6 +1672,12 @@ function oppdater(dt){
     romLaastOpp = true;
     BANER[ROM].eid = true;
     visTrikstekst('🌌 18 000 m! Du nådde VERDENSROMMET – ny bane låst opp! 🚀', '#ffd34e', 6);
+  }
+  // 250 m på Aron Heaven -> låser opp Månen
+  if (bigAirFlyr && baneIndex === AH && hoydeM > 250 && !maaneLaastOpp){
+    maaneLaastOpp = true;
+    BANER[MAANE].eid = true;
+    visTrikstekst('🌙 250 m på Aron Heaven! Månen låst opp! 🚀', '#ffd34e', 6);
   }
   document.getElementById('hoyde').textContent = hoydeM;
 
@@ -2339,7 +2369,7 @@ function samleFremgang(){
     nivo, framgang, penger, stjerner,
     besteTriks, maksHoyde, rekordKombo, antallTriks, rekordStjerner, bigAirRekord,
     vinnstreak, baneIndex, langsomStart,
-    hemmeligLaastOpp, aronHeavenLaastOpp, romLaastOpp, aronBetalt, ekstraLaast,
+    hemmeligLaastOpp, aronHeavenLaastOpp, romLaastOpp, maaneLaastOpp, aronBetalt, ekstraLaast,
     baner: BANER.map(b => !!b.eid),        // hvilke baner du eier
     triks: TRIKS.map(t => !!t.gjort),      // hvilke triks du har landet
     eideRanks: { ...eideRanks },
@@ -2371,6 +2401,7 @@ function bruktFremgang(o){
   hemmeligLaastOpp = !!o.hemmeligLaastOpp;
   aronHeavenLaastOpp = !!o.aronHeavenLaastOpp;
   romLaastOpp = !!o.romLaastOpp;
+  maaneLaastOpp = !!o.maaneLaastOpp;
   aronBetalt = !!o.aronBetalt;
   ekstraLaast = !!o.ekstraLaast;
   if (Array.isArray(o.baner)) o.baner.forEach((eid, i) => { if (BANER[i]) BANER[i].eid = !!eid; });
@@ -2518,6 +2549,7 @@ function visBaneliste(){
     if (b.hemmelig && !hemmeligLaastOpp) return;   // skjult til den er låst opp
     if (b.aronheaven && !aronHeavenLaastOpp) return;
     if (b.rom && !romLaastOpp) return;             // Verdensrommet: kun etter 18 000 m-hopp
+    if (b.maane && !maaneLaastOpp) return;         // Månen: kun etter 250 m på Aron Heaven
     const kort = document.createElement('div'); kort.className = 'bkort';
     let knapp, pris;
     if (b.eid){
@@ -2627,7 +2659,7 @@ function restartSpill(){
   stjerner = 0; nivo = 1; besteTriks = '–'; maksHoyde = 0; spiller = false;
   rekordKombo = 0; antallTriks = 0; framgang = 0; rekordStjerner = 0; penger = 0; kameraZoom = 1;
   // baner og ting
-  baneIndex = 0; baneTing = {}; dragTing = null; hemmeligLaastOpp = false; aronHeavenLaastOpp = false; romLaastOpp = false;
+  baneIndex = 0; baneTing = {}; dragTing = null; hemmeligLaastOpp = false; aronHeavenLaastOpp = false; romLaastOpp = false; maaneLaastOpp = false;
   eideMerch = {}; paaMerch = null;
   eideTramp = { standard:true }; valgtTramp = 'standard'; sprettTeller = 0;
   bossFight = false; bossTapT = -1; bossSnakk = false; ekstraLaast = false; aronBetalt = false; adminAlt = false; secretShopAktiv = false;
