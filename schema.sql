@@ -60,3 +60,10 @@ CREATE TABLE IF NOT EXISTS progress (
   data  TEXT NOT NULL,      -- JSON med hele fremgangen
   laget INTEGER NOT NULL    -- sist lagret (ms)
 );
+
+-- Rank per spiller (vises på topplistene). Overskrives med din nåværende rank.
+CREATE TABLE IF NOT EXISTS ranks (
+  navn  TEXT PRIMARY KEY,   -- spillernavn (matcher navn i topplistene)
+  rank  TEXT NOT NULL,      -- rank-tittel, f.eks. "The godly Aron" / "The real Aron"
+  laget INTEGER NOT NULL    -- sist oppdatert (ms)
+);
