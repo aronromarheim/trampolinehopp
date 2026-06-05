@@ -11,14 +11,17 @@ Hele spillet er én enkelt, selvstendig HTML-fil – ingen bygg, ingen avhengigh
 - **Pil venstre / høyre** – snurr (salto fram / bak)
 - Land rett for rene triks, bygg kombo, tjen penger, lås opp baner og ranks.
 
-## 🌐 Online highscore
-Big Air-leaderboardet er ekte online: flest grader du spinner på et big air-hopp
-lagres med navnet ditt på en delt topp-liste (Cloudflare D1-database).
-- To lister: **☀️ Dagens highscore** (nullstilles ved norsk midnatt) og **🏆 Gjennom tidene**.
-- **📊 Nivå-topp:** egen liste over de 10 spillerne med høyest nivå.
-- **💰 Penge-topp:** egen liste over de 10 rikeste spillerne (høyeste pengebeholdning).
-- API: `functions/api/scores.js` (`{today, allTime}`), `functions/api/levels.js` (topp 10 nivå) og `functions/api/money.js` (topp 10 penger).
-- Kjører du lokalt (uten API) faller spillet pent tilbake til en lokal eksempel-liste.
+## 🌐 Online topplister
+Trykk **🏆 Leaderboards** for å se alle topplistene samlet i ett vindu (alle er ekte online,
+lagret i en delt Cloudflare D1-database):
+- **☀️ Big Air – Dagens** (nullstilles ved norsk midnatt) og **🏅 Big Air – Gjennom tidene** (flest grader spunnet)
+- **📊 Høyest nivå** – de 10 med høyest nivå
+- **💰 Rikeste spillere** – de 10 med mest penger
+- **🔥 Lengste kombo** – de 10 med lengst kombo
+
+API-endepunkter (Cloudflare Pages Functions): `functions/api/scores.js` (`{today, allTime}`),
+`levels.js`, `money.js`, `combos.js`. Hver tar `GET` (topp 10) og `POST` (lagre beste per navn).
+Kjører du lokalt (uten API) faller spillet pent tilbake til en lokal eksempel-liste.
 
 ## Kjøre lokalt
 Du trenger bare en nettleser. For å serve filen lokalt:
